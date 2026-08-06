@@ -1,0 +1,7 @@
+python-dotenv
+rich
+loguru
+requests
+httpx
+pyyaml
+pytest
