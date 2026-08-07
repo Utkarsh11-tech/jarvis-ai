@@ -12,6 +12,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        # Window Properties
         self.setWindowTitle("JARVIS")
         self.resize(1000, 650)
 
@@ -21,7 +22,6 @@ class MainWindow(QMainWindow):
 
         # Main Layout
         self.main_layout = QVBoxLayout()
-
         self.central_widget.setLayout(self.main_layout)
 
         # Title

@@ -2,7 +2,7 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from screens.home.home_screen import MainWindow
+from body.app.screens.home.home_screen import MainWindow
 
 
 def main():
