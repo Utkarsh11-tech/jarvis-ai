@@ -1,3 +1,8 @@
+from core.normalizer import normalize
+from core.intent_detector import detect_intent
+from core.target_extractor import extract_target
+
+
 class Assistant:
 
     def __init__(self):
@@ -13,57 +18,34 @@ class Assistant:
             print(result)  # Temporary for debugging
 
     def initialize(self):
+        """Initializes all required modules."""
         print("Initializing all required modules.....")
 
     def listen(self):
         """Receives a command from the user."""
-        command = input("You : ")
-        return command
+        return input("You: ")
 
     def process_command(self, command):
-        """Cleans the command and extracts intent and target."""
+        """Processes the user command and returns structured data."""
 
-        # Cleaning
-        command = command.strip()
-        command = command.lower()
-        command = " ".join(command.split())
+        # Normalize the command
+        command = normalize(command)
 
-        # Split command
+        # Split the command into words
         words = command.split()
 
-        # Safety check
+        # Handle empty input
         if not words:
-            return {
-                "intent": "UNKNOWN",
-                "target": ""
-            }
+            return {"intent": "UNKNOWN", "target": ""}
 
-        # Extract action and target
+        # Extract the action
         action = words[0]
-        target = " ".join(words[1:])
 
-        # Intent Mapping (Temporary)
-        intent_map = {
-            "open": "OPEN_APPLICATION",
-            "launch": "OPEN_APPLICATION",
-            "start": "OPEN_APPLICATION",
+        # Detect the intent
+        intent = detect_intent(action)
 
-            "play": "PLAY_MEDIA",
+        # Extract the target
+        target = extract_target(words)
 
-            "shutdown": "SYSTEM_COMMAND",
-            "restart": "SYSTEM_COMMAND",
-
-            "search": "WEB_SEARCH",
-            "find": "WEB_SEARCH",
-        }
-
-        # Find Intent
-        intent = intent_map.get(action, "UNKNOWN")
-
-        # Return structured data
-        result = {
-            "intent": intent,
-            "target": target
-        }
-
-        return result
+        # Return structured result
+        return {"intent": intent, "target": target}
