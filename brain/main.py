@@ -4,7 +4,7 @@ from core.assistant import Assistant
 def main():
     jarvis = Assistant()
     jarvis.start()
-    jarvis.initialize()
+    # jarvis.initialize()
 
 
 if __name__ == "__main__":
