@@ -15,7 +15,7 @@ class Assistant:
         while True:
             command = self.listen()
             result = self.process_command(command)
-            print(result)  # Temporary for debugging
+            print(result)  # Temporary for debugging 
 
     def initialize(self):
         """Initializes all required modules."""

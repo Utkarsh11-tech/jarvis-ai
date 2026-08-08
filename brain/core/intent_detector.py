@@ -18,4 +18,4 @@ def detect_intent(action):
     Detects the user's intent based on the action word.
     """
 
-    return INTENT_MAP.get(action, "UNKNOWN")
+    return INTENT_MAP.get(action, "UNKNOWN") 
