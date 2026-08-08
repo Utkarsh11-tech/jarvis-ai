@@ -26,33 +26,99 @@ class OrbWidget(QWidget):
 
         self.setMinimumSize(300, 300)
 
-        # Current JARVIS state
+        # ==================================================
+        # JARVIS STATE
+        # ==================================================
+
         self.state = OrbState.IDLE
 
-        # Animation
+        # ==================================================
+        # ANIMATION
+        # ==================================================
+
         self.rotation = 0
         self.pulse = 0
+
+        # ==================================================
+        # AUDIO REACTIVITY
+        # ==================================================
+
+        # Current displayed audio level
+        self.audio_level = 0.0
+
+        # Target audio level received from microphone / TTS
+        self.target_audio_level = 0.0
+
+        # ==================================================
+        # ANIMATION TIMER
+        # ==================================================
+
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.animate)
         self.timer.start(30)
 
-    def animate(self):
-        self.rotation = (self.rotation + 0.8) % 360
+    # ======================================================
+    # ANIMATION
+    # ======================================================
 
+    def animate(self):
+        # Rotating HUD elements
+        self.rotation = (
+            self.rotation + 0.8
+        ) % 360
+
+        # State-based pulse speed
         if self.state == OrbState.LISTENING:
             self.pulse += 0.12
 
         elif self.state == OrbState.SPEAKING:
             self.pulse += 0.18
 
+        elif self.state == OrbState.THINKING:
+            self.pulse += 0.08
+
         else:
             self.pulse += 0.04
 
+        # Smooth audio reaction
+        self.audio_level += (
+            self.target_audio_level
+            - self.audio_level
+        ) * 0.18
+
+        # Redraw
         self.update()
+
+    # ======================================================
+    # STATE
+    # ======================================================
 
     def set_state(self, state):
         self.state = state
         self.update()
+
+    # ======================================================
+    # AUDIO LEVEL
+    # ======================================================
+
+    def set_audio_level(self, level):
+        """
+        Receives an audio level between 0.0 and 1.0.
+
+        0.0 = silence
+        1.0 = maximum detected volume
+        """
+
+        level = max(
+            0.0,
+            min(1.0, float(level))
+        )
+
+        self.target_audio_level = level
+
+    # ======================================================
+    # PAINT EVENT
+    # ======================================================
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -61,7 +127,9 @@ class OrbWidget(QWidget):
             QPainter.RenderHint.Antialiasing
         )
 
-        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setPen(
+            Qt.PenStyle.NoPen
+        )
 
         # ==================================================
         # CENTER
@@ -70,7 +138,10 @@ class OrbWidget(QWidget):
         center_x = self.width() / 2
         center_y = self.height() / 2
 
-        center = (center_x, center_y)
+        center = (
+            center_x,
+            center_y
+        )
 
         # ==================================================
         # RESPONSIVE SIZE
@@ -81,9 +152,22 @@ class OrbWidget(QWidget):
             self.height()
         ) * 0.38
 
-        pulse_amount = math.sin(self.pulse) * 0.015
+        # Normal breathing animation
+        breathing = (
+            math.sin(self.pulse) * 0.012
+        )
 
-        radius = base_radius * (1 + pulse_amount)
+        # Voice-driven expansion
+        voice_reaction = (
+            self.audio_level * 0.10
+        )
+
+        # Final radius
+        radius = base_radius * (
+            1
+            + breathing
+            + voice_reaction
+        )
 
         # ==================================================
         # STATE-BASED GLOW
@@ -107,6 +191,16 @@ class OrbWidget(QWidget):
         else:
             glow_strength = 45
 
+        # Additional glow from voice
+        glow_strength += int(
+            self.audio_level * 80
+        )
+
+        glow_strength = min(
+            glow_strength,
+            255
+        )
+
         # ==================================================
         # OUTER GLOW
         # ==================================================
@@ -121,17 +215,32 @@ class OrbWidget(QWidget):
 
         glow.setColorAt(
             0.0,
-            QColor(0, 217, 255, glow_strength)
+            QColor(
+                0,
+                217,
+                255,
+                glow_strength
+            )
         )
 
         glow.setColorAt(
             0.45,
-            QColor(0, 217, 255, glow_strength // 2)
+            QColor(
+                0,
+                217,
+                255,
+                glow_strength // 2
+            )
         )
 
         glow.setColorAt(
             1.0,
-            QColor(0, 217, 255, 0)
+            QColor(
+                0,
+                217,
+                255,
+                0
+            )
         )
 
         painter.setBrush(glow)
@@ -237,19 +346,41 @@ class OrbWidget(QWidget):
 
         for i in range(36):
             angle = math.radians(
-                i * 10 + self.rotation * 0.5
+                i * 10
+                + self.rotation * 0.5
             )
 
-            x = center_x + math.cos(angle) * dot_radius
-            y = center_y + math.sin(angle) * dot_radius
+            x = (
+                center_x
+                + math.cos(angle)
+                * dot_radius
+            )
+
+            y = (
+                center_y
+                + math.sin(angle)
+                * dot_radius
+            )
 
             dot_size = 3
 
             if i % 6 == 0:
                 dot_size = 5
 
+            # Voice makes dots brighter
+            dot_alpha = min(
+                255,
+                150
+                + int(self.audio_level * 105)
+            )
+
             painter.setBrush(
-                QColor(0, 217, 255, 190)
+                QColor(
+                    0,
+                    217,
+                    255,
+                    dot_alpha
+                )
             )
 
             painter.drawEllipse(
@@ -272,11 +403,21 @@ class OrbWidget(QWidget):
             )
 
             if i % 2 == 0:
-                color = QColor(0, 217, 255, 220)
+                color = QColor(
+                    0,
+                    217,
+                    255,
+                    220
+                )
                 width = 5
 
             else:
-                color = QColor(0, 217, 255, 65)
+                color = QColor(
+                    0,
+                    217,
+                    255,
+                    65
+                )
                 width = 3
 
             self.draw_arc(
@@ -323,29 +464,55 @@ class OrbWidget(QWidget):
 
         core_glow.setColorAt(
             0.0,
-            QColor(255, 255, 255, 220)
+            QColor(
+                255,
+                255,
+                255,
+                220
+            )
         )
 
         core_glow.setColorAt(
             0.25,
-            QColor(0, 217, 255, 180)
+            QColor(
+                0,
+                217,
+                255,
+                180
+            )
         )
 
         core_glow.setColorAt(
             0.65,
-            QColor(0, 217, 255, 45)
+            QColor(
+                0,
+                217,
+                255,
+                45
+            )
         )
 
         core_glow.setColorAt(
             1.0,
-            QColor(0, 217, 255, 0)
+            QColor(
+                0,
+                217,
+                255,
+                0
+            )
         )
 
         painter.setBrush(core_glow)
 
         painter.drawEllipse(
-            int(center_x - core_radius * 1.5),
-            int(center_y - core_radius * 1.5),
+            int(
+                center_x
+                - core_radius * 1.5
+            ),
+            int(
+                center_y
+                - core_radius * 1.5
+            ),
             int(core_radius * 3),
             int(core_radius * 3)
         )
@@ -362,29 +529,53 @@ class OrbWidget(QWidget):
 
         core.setColorAt(
             0.0,
-            QColor(255, 255, 255, 255)
+            QColor(
+                255,
+                255,
+                255,
+                255
+            )
         )
 
         core.setColorAt(
             0.25,
-            QColor(0, 230, 255, 255)
+            QColor(
+                0,
+                230,
+                255,
+                255
+            )
         )
 
         core.setColorAt(
             0.75,
-            QColor(0, 100, 150, 255)
+            QColor(
+                0,
+                100,
+                150,
+                255
+            )
         )
 
         core.setColorAt(
             1.0,
-            QColor(0, 30, 50, 255)
+            QColor(
+                0,
+                30,
+                50,
+                255
+            )
         )
 
         painter.setBrush(core)
 
         painter.drawEllipse(
-            int(center_x - core_radius),
-            int(center_y - core_radius),
+            int(
+                center_x - core_radius
+            ),
+            int(
+                center_y - core_radius
+            ),
             int(core_radius * 2),
             int(core_radius * 2)
         )
@@ -399,7 +590,12 @@ class OrbWidget(QWidget):
 
         painter.setPen(
             QPen(
-                QColor(0, 217, 255, 90),
+                QColor(
+                    0,
+                    217,
+                    255,
+                    90
+                ),
                 1
             )
         )
@@ -408,7 +604,9 @@ class OrbWidget(QWidget):
 
         for ring in range(1, 4):
             current_radius = (
-                hex_radius * ring / 3
+                hex_radius
+                * ring
+                / 3
             )
 
             self.draw_hex_ring(
@@ -422,7 +620,9 @@ class OrbWidget(QWidget):
         # CENTER POINT
         # ==================================================
 
-        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setPen(
+            Qt.PenStyle.NoPen
+        )
 
         center_glow = QRadialGradient(
             center_x,
@@ -432,26 +632,47 @@ class OrbWidget(QWidget):
 
         center_glow.setColorAt(
             0.0,
-            QColor(255, 255, 255, 255)
+            QColor(
+                255,
+                255,
+                255,
+                255
+            )
         )
 
         center_glow.setColorAt(
             0.5,
-            QColor(0, 240, 255, 240)
+            QColor(
+                0,
+                240,
+                255,
+                240
+            )
         )
 
         center_glow.setColorAt(
             1.0,
-            QColor(0, 217, 255, 0)
+            QColor(
+                0,
+                217,
+                255,
+                0
+            )
         )
 
         painter.setBrush(center_glow)
 
-        center_point = core_radius * 0.22
+        center_point = (
+            core_radius * 0.22
+        )
 
         painter.drawEllipse(
-            int(center_x - center_point),
-            int(center_y - center_point),
+            int(
+                center_x - center_point
+            ),
+            int(
+                center_y - center_point
+            ),
             int(center_point * 2),
             int(center_point * 2)
         )
@@ -544,12 +765,14 @@ class OrbWidget(QWidget):
 
             x = (
                 center_x
-                + math.cos(angle) * radius
+                + math.cos(angle)
+                * radius
             )
 
             y = (
                 center_y
-                + math.sin(angle) * radius
+                + math.sin(angle)
+                * radius
             )
 
             points.append(
@@ -558,7 +781,9 @@ class OrbWidget(QWidget):
 
         for i in range(6):
             start = points[i]
-            end = points[(i + 1) % 6]
+            end = points[
+                (i + 1) % 6
+            ]
 
             painter.drawLine(
                 start[0],
