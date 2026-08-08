@@ -1,6 +1,7 @@
 from core.normalizer import normalize
 from core.intent_detector import detect_intent
 from core.target_extractor import extract_target
+from core.executor import execute
 
 
 class Assistant:
@@ -15,7 +16,8 @@ class Assistant:
         while True:
             command = self.listen()
             result = self.process_command(command)
-            print(result)  # Temporary for debugging 
+            response = execute(result)
+            print(response)
 
     def initialize(self):
         """Initializes all required modules."""
