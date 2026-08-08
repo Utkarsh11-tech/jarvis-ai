@@ -1,5 +1,4 @@
 from PySide6.QtCore import Qt
-
 from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
@@ -12,7 +11,6 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        # Window Properties
         self.setWindowTitle("JARVIS")
         self.resize(1000, 650)
 
@@ -24,8 +22,29 @@ class MainWindow(QMainWindow):
         self.main_layout = QVBoxLayout()
         self.central_widget.setLayout(self.main_layout)
 
-        # Title
-        self.title = QLabel("JARVIS AI")
-        self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # ---------- Header ----------
+        self.header = QLabel("JARVIS")
+        self.header.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.main_layout.addWidget(self.title)
+        # ---------- Orb ----------
+        self.orb = QLabel("◉")
+        self.orb.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # ---------- Status ----------
+        self.status = QLabel("Status : Waiting for command...")
+        self.status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # ---------- Chat ----------
+        self.chat = QLabel("Conversation Area")
+        self.chat.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # ---------- Footer ----------
+        self.footer = QLabel("Version 0.1      |      Offline")
+        self.footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Add widgets with stretch factors
+        self.main_layout.addWidget(self.header, 1)
+        self.main_layout.addWidget(self.orb, 5)
+        self.main_layout.addWidget(self.status, 1)
+        self.main_layout.addWidget(self.chat, 3)
+        self.main_layout.addWidget(self.footer, 1)
