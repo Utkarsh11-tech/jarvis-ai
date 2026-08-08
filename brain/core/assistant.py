@@ -15,39 +15,69 @@ class Assistant:
 
         while True:
             command = self.listen()
-            result = self.process_command(command)
-            response = execute(result)
-            print(response)
+            results = self.process_command(command)
+
+            for result in results:
+                response = execute(result)
+                print(response)
 
     def initialize(self):
         """Initializes all required modules."""
+
         print("Initializing all required modules.....")
 
     def listen(self):
         """Receives a command from the user."""
+
         return input("You: ")
 
     def process_command(self, command):
-        """Processes the user command and returns structured data."""
+        """Processes one or multiple user commands."""
 
         # Normalize the command
         command = normalize(command)
 
-        # Split the command into words
-        words = command.split()
-
         # Handle empty input
-        if not words:
-            return {"intent": "UNKNOWN", "target": ""}
+        if not command:
+            return [
+                {
+                    "intent": "UNKNOWN",
+                    "target": ""
+                }
+            ]
 
-        # Extract the action
-        action = words[0]
+        # Split multiple commands
+        commands = command.replace(" and then ", " and ").split(" and ")
 
-        # Detect the intent
-        intent = detect_intent(action)
+        results = []
 
-        # Extract the target
-        target = extract_target(words)
+        for current_command in commands:
 
-        # Return structured result
-        return {"intent": intent, "target": target}
+            words = current_command.split()
+
+            if not words:
+                continue
+
+            # Extract the action
+            action = words[0]
+
+            # Extract the target
+            target = extract_target(words)
+
+            # Detect the intent
+            intent = detect_intent(action, target)
+
+            # System commands use the action itself as the target
+            if intent == "SYSTEM_COMMAND" and not target:
+                target = action
+
+                
+            # Store structured command
+            results.append(
+                {
+                    "intent": intent,
+                    "target": target
+                }
+            )
+
+        return results

@@ -9,13 +9,19 @@ INTENT_MAP = {
     "restart": "SYSTEM_COMMAND",
 
     "search": "WEB_SEARCH",
-    "find": "WEB_SEARCH",
 }
 
 
-def detect_intent(action):
+def detect_intent(action, target=""):
     """
-    Detects the user's intent based on the action word.
+    Detects the user's intent based on the action
+    and the target.
     """
 
-    return INTENT_MAP.get(action, "UNKNOWN") 
+    if action == "find":
+        if target:
+            return "FILE_SEARCH"
+
+        return "WEB_SEARCH"
+
+    return INTENT_MAP.get(action, "UNKNOWN")
