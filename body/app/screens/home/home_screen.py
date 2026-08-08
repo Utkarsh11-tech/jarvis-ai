@@ -1,5 +1,6 @@
 from PySide6.QtCore import Qt
-from body.app.widgets.orb import OrbWidget
+from body.app.widgets.orb import OrbWidget, OrbState
+from body.app.widgets.microphone import Microphone
 from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
@@ -29,6 +30,17 @@ class MainWindow(QMainWindow):
 
         # ---------- Orb ----------
         self.orb = OrbWidget()
+        self.microphone = Microphone()
+
+        self.microphone.level_changed.connect(
+            self.orb.set_audio_level
+        )
+
+        self.microphone.start()
+
+        self.orb.set_state(
+            OrbState.LISTENING
+        )
 
         # ---------- Status ----------
         self.status = QLabel("Status : Waiting for command...")
