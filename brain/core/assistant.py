@@ -1,7 +1,18 @@
-from core.normalizer import normalize
-from core.intent_detector import detect_intent
-from core.target_extractor import extract_target
-from core.executor import execute
+from brain.core.normalizer import normalize
+from brain.core.intent_detector import detect_intent
+from brain.core.target_extractor import extract_target
+from brain.core.executor import (
+    execute,
+    get_acknowledgement,
+)
+
+from brain.voices.voice_manager import speak
+from brain.voices.listener import VoiceListener
+
+from brain.core.state import (
+    JarvisState,
+    StateManager,
+)
 
 
 class Assistant:
@@ -9,44 +20,115 @@ class Assistant:
     def __init__(self):
         print("Assistant created")
 
+        self.listener = None
+        self.state_manager = StateManager()
+
     def start(self):
         self.initialize()
+
         print("JARVIS is now online.")
 
-        while True:
-            command = self.listen()
-            results = self.process_command(command)
+        self.listener = VoiceListener()
 
-            for result in results:
-                response = execute(result)
-                print(response)
+        try:
+
+            while True:
+
+                # -------------------------
+                # SLEEPING
+                # -------------------------
+
+                self.state_manager.set_state(JarvisState.SLEEPING)
+
+                awakened = self.listener.listen_for_wake_word()
+
+                if not awakened:
+                    continue
+
+                # -------------------------
+                # LISTENING
+                # -------------------------
+
+                self.state_manager.set_state(JarvisState.LISTENING)
+
+                speak("Yes?")
+
+                command = self.listener.listen_for_command()
+
+                if not command:
+
+                    self.state_manager.set_state(JarvisState.SPEAKING)
+
+                    speak("I didn't hear a command.")
+
+                    self.listener.prepare_for_wake_word()
+
+                    continue
+
+                # -------------------------
+                # THINKING
+                # -------------------------
+
+                self.state_manager.set_state(JarvisState.THINKING)
+
+                results = self.process_command(command)
+
+                # -------------------------
+                # COMMAND PROCESSING
+                # -------------------------
+
+                for result in results:
+
+                    # -------------------------
+                    # SPEAKING
+                    # -------------------------
+
+                    self.state_manager.set_state(JarvisState.SPEAKING)
+
+                    acknowledgement = get_acknowledgement(result)
+
+                    print(acknowledgement)
+
+                    speak(acknowledgement)
+
+                    # -------------------------
+                    # EXECUTING
+                    # -------------------------
+
+                    self.state_manager.set_state(JarvisState.EXECUTING)
+
+                    response = execute(result)
+
+                    print(response)
+
+                self.listener.prepare_for_wake_word()
+
+        except KeyboardInterrupt:
+
+            print("\nJARVIS: Shutting down.")
+
+        finally:
+
+            if self.listener:
+                self.listener.close()
 
     def initialize(self):
-        """Initializes all required modules."""
+        """
+        Initializes all required modules.
+        """
 
         print("Initializing all required modules.....")
 
-    def listen(self):
-        """Receives a command from the user."""
-
-        return input("You: ")
-
     def process_command(self, command):
-        """Processes one or multiple user commands."""
+        """
+        Processes one or multiple user commands.
+        """
 
-        # Normalize the command
         command = normalize(command)
 
-        # Handle empty input
         if not command:
-            return [
-                {
-                    "intent": "UNKNOWN",
-                    "target": ""
-                }
-            ]
+            return []
 
-        # Split multiple commands
         commands = command.replace(" and then ", " and ").split(" and ")
 
         results = []
@@ -58,25 +140,22 @@ class Assistant:
             if not words:
                 continue
 
-            # Extract the action
             action = words[0]
 
-            # Extract the target
             target = extract_target(words)
 
-            # Detect the intent
-            intent = detect_intent(action, target)
+            intent = detect_intent(
+                action,
+                target,
+            )
 
-            # System commands use the action itself as the target
             if intent == "SYSTEM_COMMAND" and not target:
                 target = action
 
-                
-            # Store structured command
             results.append(
                 {
                     "intent": intent,
-                    "target": target
+                    "target": target,
                 }
             )
 

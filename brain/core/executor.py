@@ -17,7 +17,11 @@ def get_chrome_profiles():
     """
 
     local_state_path = os.path.join(
-        os.environ["LOCALAPPDATA"], "Google", "Chrome", "User Data", "Local State"
+        os.environ["LOCALAPPDATA"],
+        "Google",
+        "Chrome",
+        "User Data",
+        "Local State",
     )
 
     try:
@@ -46,14 +50,20 @@ def open_chrome():
 
     print("\nAvailable Chrome profiles:")
 
-    for index, (profile_directory, profile_data) in enumerate(profile_list, start=1):
+    for index, (profile_directory, profile_data) in enumerate(
+        profile_list,
+        start=1,
+    ):
         profile_name = profile_data.get("name", "Unknown")
+
         print(f"{index}. {profile_name}")
 
     while True:
+
         choice = input("JARVIS: Select a profile number: ")
 
         if choice.isdigit():
+
             choice = int(choice)
 
             if 1 <= choice <= len(profile_list):
@@ -62,16 +72,24 @@ def open_chrome():
         print("JARVIS: Please select a valid profile number.")
 
     selected_directory, selected_profile = profile_list[choice - 1]
+
     selected_name = selected_profile.get("name", "Unknown")
 
     chrome_path = APPLICATIONS["chrome"]
 
     try:
-        subprocess.Popen([chrome_path, f"--profile-directory={selected_directory}"])
+
+        subprocess.Popen(
+            [
+                chrome_path,
+                f"--profile-directory={selected_directory}",
+            ]
+        )
 
         return f"Opening {selected_name}."
 
     except OSError:
+
         return f"I couldn't open {selected_name}."
 
 
@@ -81,23 +99,43 @@ def execute_system_command(target):
     """
 
     if target == "shutdown":
+
         confirmation = input(
             "JARVIS: Are you sure you want to shut down " "the computer? (yes/no): "
         )
 
         if confirmation.lower() == "yes":
-            subprocess.Popen(["shutdown", "/s", "/t", "5"])
+
+            subprocess.Popen(
+                [
+                    "shutdown",
+                    "/s",
+                    "/t",
+                    "5",
+                ]
+            )
+
             return "Shutting down the computer in 5 seconds."
 
         return "Shutdown cancelled."
 
     if target == "restart":
+
         confirmation = input(
             "JARVIS: Are you sure you want to restart " "the computer? (yes/no): "
         )
 
         if confirmation.lower() == "yes":
-            subprocess.Popen(["shutdown", "/r", "/t", "5"])
+
+            subprocess.Popen(
+                [
+                    "shutdown",
+                    "/r",
+                    "/t",
+                    "5",
+                ]
+            )
+
             return "Restarting the computer in 5 seconds."
 
         return "Restart cancelled."
@@ -114,6 +152,7 @@ def get_available_drives():
 
     # Search non-system drives first.
     for drive_letter in "DEFGHIJKLMNOPQRSTUVWXYZ":
+
         drive = f"{drive_letter}:\\"
 
         if os.path.exists(drive):
@@ -159,7 +198,9 @@ def find_filesystem_matches(target):
         print(f"JARVIS: Searching {drive}...")
 
         for root, directories, files in os.walk(
-            drive, topdown=True, onerror=lambda error: None
+            drive,
+            topdown=True,
+            onerror=lambda error: None,
         ):
 
             directories[:] = [
@@ -173,12 +214,14 @@ def find_filesystem_matches(target):
             for directory in directories:
 
                 if directory.lower() == target.lower():
+
                     folder_matches.append(os.path.join(root, directory))
 
             # Search files.
             for file in files:
 
                 if file.lower() == target.lower():
+
                     file_matches.append(os.path.join(root, file))
 
         # Stop searching after finding a result on
@@ -208,6 +251,7 @@ def search_filesystem(target):
     if total_matches == 1:
 
         if file_matches:
+
             return f"I found the file {target}.\n" f"Location: {file_matches[0]}"
 
         return f"I found the folder {target}.\n" f"Location: {folder_matches[0]}"
@@ -217,11 +261,15 @@ def search_filesystem(target):
     counter = 1
 
     for match in file_matches:
+
         response += f"{counter}. [FILE] {match}\n"
+
         counter += 1
 
     for match in folder_matches:
+
         response += f"{counter}. [FOLDER] {match}\n"
+
         counter += 1
 
     return response.rstrip()
@@ -233,11 +281,14 @@ def open_file(path):
     """
 
     try:
+
         os.startfile(path)
+
         return f"Opening {os.path.basename(path)}."
 
     except OSError:
-        return f"I couldn't open {os.path.basename(path)}."
+
+        return f"I couldn't open " f"{os.path.basename(path)}."
 
 
 def open_folder(path):
@@ -246,11 +297,57 @@ def open_folder(path):
     """
 
     try:
+
         os.startfile(path)
-        return f"Opening folder {os.path.basename(path)}."
+
+        return f"Opening folder " f"{os.path.basename(path)}."
 
     except OSError:
-        return f"I couldn't open folder {os.path.basename(path)}."
+
+        return f"I couldn't open folder " f"{os.path.basename(path)}."
+
+
+def get_acknowledgement(command):
+    """
+    Generates a response that JARVIS can speak
+    before performing the requested action.
+    """
+
+    intent = command["intent"]
+    target = command["target"]
+
+    if intent == "OPEN_APPLICATION":
+
+        if target == "chrome":
+            return "Opening Chrome."
+
+        if target in APPLICATIONS:
+            return f"Opening {target}."
+
+        return f"Searching for {target}."
+
+    if intent == "WEB_SEARCH":
+
+        if not target:
+            return "What would you like me to search for?"
+
+        return f"Searching for {target}."
+
+    if intent == "SYSTEM_COMMAND":
+
+        if target == "shutdown":
+            return "Preparing to shut down the computer."
+
+        if target == "restart":
+            return "Preparing to restart the computer."
+
+        return f"Preparing to perform {target}."
+
+    if intent == "FILE_SEARCH":
+
+        return f"Searching for {target}."
+
+    return "I'll take care of that."
 
 
 def execute(command):
@@ -263,24 +360,34 @@ def execute(command):
 
     if intent == "OPEN_APPLICATION":
 
-        # Check registered applications first.
+        # Chrome requires profile selection.
         if target == "chrome":
             return open_chrome()
 
         application = APPLICATIONS.get(target)
 
         if application:
-            subprocess.Popen(application)
-            return f"Opening {target}"
 
-        # If it isn't an application, search for a
-        # matching file or folder.
+            try:
+
+                subprocess.Popen(application)
+
+                return f"Opening {target}."
+
+            except OSError:
+
+                return f"I couldn't open {target}."
+
+        # If it isn't an application,
+        # search for a matching file or folder.
         file_matches, folder_matches = find_filesystem_matches(target)
 
         if file_matches:
+
             return open_file(file_matches[0])
 
         if folder_matches:
+
             return open_folder(folder_matches[0])
 
         return f"I couldn't find {target}."
@@ -294,12 +401,14 @@ def execute(command):
 
         webbrowser.open(search_url)
 
-        return f"Searching for {target}"
+        return f"Searching for {target}."
 
     if intent == "SYSTEM_COMMAND":
+
         return execute_system_command(target)
 
     if intent == "FILE_SEARCH":
+
         return search_filesystem(target)
 
     return "I don't know how to execute that command."
