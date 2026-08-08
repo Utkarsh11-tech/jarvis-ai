@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt
+from body.app.widgets.orb import OrbWidget
 from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
@@ -27,8 +28,7 @@ class MainWindow(QMainWindow):
         self.header.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # ---------- Orb ----------
-        self.orb = QLabel("◉")
-        self.orb.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.orb = OrbWidget()
 
         # ---------- Status ----------
         self.status = QLabel("Status : Waiting for command...")
