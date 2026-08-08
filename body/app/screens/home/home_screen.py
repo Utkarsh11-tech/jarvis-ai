@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (
 from body.app.widgets.orb import OrbWidget, OrbState
 from body.app.widgets.microphone import Microphone
 from body.app.backend.bridge import JarvisBridge
+from body.app.widgets.conversation import ConversationWidget
+from body.app.widgets.chat_input import ChatInput
 
 
 class MainWindow(QMainWindow):
@@ -69,11 +71,13 @@ class MainWindow(QMainWindow):
         )
 
         # ---------- Chat ----------
-        self.chat = QLabel(
-            "Conversation Area"
-        )
-        self.chat.setAlignment(
-            Qt.AlignmentFlag.AlignCenter
+        self.chat = ConversationWidget()
+
+        # ---------- Chat Input ----------
+        self.chat_input = ChatInput()
+
+        self.chat_input.message_sent.connect(
+            self.handle_text_message
         )
 
         # ---------- Footer ----------
@@ -106,8 +110,25 @@ class MainWindow(QMainWindow):
         )
 
         self.main_layout.addWidget(
+            self.chat_input
+        )
+
+        self.main_layout.addWidget(
             self.footer,
             1
+        )
+
+    # ==================================================
+    # HANDLE TEXT MESSAGE
+    # ==================================================
+
+    def handle_text_message(self, message):
+        self.chat.add_user_message(
+            message
+        )
+
+        self.bridge.send_command(
+            message
         )
 
     # ==================================================
