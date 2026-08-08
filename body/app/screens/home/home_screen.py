@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 
 from body.app.widgets.orb import OrbWidget, OrbState
 from body.app.widgets.microphone import Microphone
+from body.app.backend.bridge import JarvisBridge
 
 
 class MainWindow(QMainWindow):
@@ -35,17 +36,25 @@ class MainWindow(QMainWindow):
         # ---------- Orb ----------
         self.orb = OrbWidget()
 
+        # ---------- Microphone ----------
         self.microphone = Microphone()
 
         self.microphone.level_changed.connect(
             self.orb.set_audio_level
         )
 
-        # Orb starts in idle state
+        # ---------- Bridge ----------
+        self.bridge = JarvisBridge()
+
+        self.bridge.state_changed.connect(
+            self.handle_state_change
+        )
+
+        # Initial state
         self.orb.set_state(
             OrbState.IDLE
         )
-
+        
         # ---------- Status ----------
         self.status = QLabel(
             "Status : Waiting for command..."
@@ -95,3 +104,34 @@ class MainWindow(QMainWindow):
             self.footer,
             1
         )
+        
+    # ==================================================
+    # HANDLE JARVIS STATE
+    # ==================================================
+
+    def handle_state_change(self, state):
+        try:
+            orb_state = OrbState(
+                state.lower()
+            )
+
+            self.orb.set_state(
+                orb_state
+            )
+
+            self.status.setText(
+                f"Status : {state.title()}"
+            )
+
+            # Start microphone only while listening
+            if orb_state == OrbState.LISTENING:
+                self.microphone.start()
+
+            # Stop microphone for every other state
+            else:
+                self.microphone.stop()
+
+        except ValueError:
+            self.status.setText(
+                f"Status : Unknown state ({state})"
+            )

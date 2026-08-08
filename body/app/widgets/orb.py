@@ -152,17 +152,17 @@ class OrbWidget(QWidget):
             self.height()
         ) * 0.38
 
-        # Normal breathing animation
-        breathing = (
-            math.sin(self.pulse) * 0.012
-        )
+        # Normal breathing
+        breathing = math.sin(self.pulse) * 0.025
+
+        # Stronger reaction while listening
+        if self.state == OrbState.LISTENING:
+            breathing = math.sin(self.pulse) * 0.015
 
         # Voice-driven expansion
-        voice_reaction = (
-            self.audio_level * 0.10
-        )
+        voice_reaction = self.audio_level * 0.15
 
-        # Final radius
+        #Final radius
         radius = base_radius * (
             1
             + breathing
