@@ -43,6 +43,11 @@ class MainWindow(QMainWindow):
             self.orb.set_audio_level
         )
 
+        # ---------- Orb Click ----------
+        self.orb.clicked.connect(
+            self.toggle_listening
+        )
+
         # ---------- Bridge ----------
         self.bridge = JarvisBridge()
 
@@ -54,7 +59,7 @@ class MainWindow(QMainWindow):
         self.orb.set_state(
             OrbState.IDLE
         )
-        
+
         # ---------- Status ----------
         self.status = QLabel(
             "Status : Waiting for command..."
@@ -104,7 +109,34 @@ class MainWindow(QMainWindow):
             self.footer,
             1
         )
-        
+
+    # ==================================================
+    # TOGGLE LISTENING
+    # ==================================================
+
+    def toggle_listening(self):
+        if self.orb.state == OrbState.IDLE:
+            self.orb.set_state(
+                OrbState.LISTENING
+            )
+
+            self.status.setText(
+                "Status : Listening..."
+            )
+
+            self.microphone.start()
+
+        elif self.orb.state == OrbState.LISTENING:
+            self.microphone.stop()
+
+            self.orb.set_state(
+                OrbState.IDLE
+            )
+
+            self.status.setText(
+                "Status : Waiting for command..."
+            )
+
     # ==================================================
     # HANDLE JARVIS STATE
     # ==================================================

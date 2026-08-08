@@ -1,7 +1,7 @@
 import math
 from enum import Enum
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import (
     QColor,
     QPainter,
@@ -21,6 +21,7 @@ class OrbState(Enum):
 
 
 class OrbWidget(QWidget):
+    clicked = Signal()
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -791,3 +792,13 @@ class OrbWidget(QWidget):
                 end[0],
                 end[1]
             )
+            
+    # ======================================================
+    # ORB CLICK
+    # ======================================================
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+
+        super().mousePressEvent(event)
