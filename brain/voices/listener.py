@@ -40,6 +40,9 @@ class VoiceListener:
 
         self.wake_stream = None
 
+        # Controls the lifetime of the listener.
+        self.running = True
+
         self._calibrate_microphone()
 
     def _calibrate_microphone(self):
@@ -50,6 +53,7 @@ class VoiceListener:
         print("JARVIS: Calibrating microphone...")
 
         with self.microphone as source:
+
             self.recognizer.adjust_for_ambient_noise(source, duration=1)
 
         print("JARVIS: Microphone ready.")
@@ -99,7 +103,7 @@ class VoiceListener:
 
         print("JARVIS: Waiting for wake word...")
 
-        while True:
+        while self.running:
 
             audio_data = self.wake_stream.read(CHUNK_SIZE, exception_on_overflow=False)
 
@@ -123,10 +127,15 @@ class VoiceListener:
 
                 return True
 
+        return False
+
     def listen_for_command(self):
         """
         Listens for a command after activation.
         """
+
+        if not self.running:
+            return ""
 
         with self.microphone as source:
 
@@ -141,6 +150,9 @@ class VoiceListener:
                 print("JARVIS: I didn't hear a command.")
 
                 return ""
+
+        if not self.running:
+            return ""
 
         try:
 
@@ -169,16 +181,30 @@ class VoiceListener:
         Prepares the wake-word detector for a new cycle.
         """
 
+        if not self.running:
+            return
+
         self._reset_wake_model()
 
         # Small cooldown prevents audio from the previous
         # interaction from immediately triggering JARVIS.
         time.sleep(0.5)
 
+    def stop(self):
+        """
+        Requests the listener to stop.
+        """
+
+        self.running = False
+
+        self._stop_wake_stream()
+
     def close(self):
         """
         Releases all microphone resources.
         """
+
+        self.running = False
 
         self._stop_wake_stream()
 
