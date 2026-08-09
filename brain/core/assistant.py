@@ -16,10 +16,13 @@ from brain.core.state import (
     StateManager,
 )
 
+from PySide6.QtCore import QObject
 
-class Assistant:
+
+class Assistant(QObject):
 
     def __init__(self, bridge):
+        super().__init__()
         print("Assistant created")
 
         self.listener = None
