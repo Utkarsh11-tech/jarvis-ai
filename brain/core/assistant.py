@@ -25,7 +25,6 @@ class Assistant(QObject):
 
         print("Assistant created")
 
-        self.listener = None
         self.bridge = bridge
         self.state_manager = StateManager(bridge)
 
@@ -39,97 +38,6 @@ class Assistant(QObject):
         self.initialize()
 
         print("JARVIS Brain is ready.")
-
-    def start(self):
-        self.initialize()
-
-        print("JARVIS is now online.")
-
-        self.listener = VoiceListener()
-
-        try:
-
-            while True:
-
-                # -------------------------
-                # SLEEPING
-                # -------------------------
-
-                self.state_manager.set_state(JarvisState.SLEEPING)
-
-                awakened = self.listener.listen_for_wake_word()
-
-                if not awakened:
-                    continue
-
-                # -------------------------
-                # LISTENING
-                # -------------------------
-
-                self.state_manager.set_state(JarvisState.LISTENING)
-
-                speak("Yes?")
-
-                command = self.listener.listen_for_command()
-
-                if not command:
-
-                    self.state_manager.set_state(JarvisState.SPEAKING)
-
-                    speak("I didn't hear a command.")
-
-                    self.listener.prepare_for_wake_word()
-
-                    continue
-
-                # -------------------------
-                # THINKING
-                # -------------------------
-
-                self.state_manager.set_state(JarvisState.THINKING)
-
-                results = self.process_command(command)
-
-                # -------------------------
-                # COMMAND PROCESSING
-                # -------------------------
-
-                for result in results:
-
-                    # -------------------------
-                    # SPEAKING
-                    # -------------------------
-
-                    self.state_manager.set_state(JarvisState.SPEAKING)
-
-                    acknowledgement = get_acknowledgement(result)
-
-                    print(acknowledgement)
-
-                    speak(acknowledgement)
-
-                    # -------------------------
-                    # EXECUTING
-                    # -------------------------
-
-                    self.state_manager.set_state(JarvisState.EXECUTING)
-
-                    response = execute(result)
-
-                    print(response)
-
-                self.state_manager.set_state(JarvisState.IDLE)
-
-                self.listener.prepare_for_wake_word()
-
-        except KeyboardInterrupt:
-
-            print("\nJARVIS: Shutting down.")
-
-        finally:
-
-            if self.listener:
-                self.listener.close()
 
     def handle_command(self, command):
         """
