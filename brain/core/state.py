@@ -7,6 +7,7 @@ class JarvisState(Enum):
     Represents the current state of JARVIS.
     """
 
+    IDLE = "idle"
     SLEEPING = "sleeping"
     LISTENING = "listening"
     THINKING = "thinking"
@@ -20,7 +21,7 @@ class StateManager:
     """
 
     def __init__(self, bridge):
-        self.current_state = JarvisState.SLEEPING
+        self.current_state = JarvisState.IDLE
         self.bridge = bridge
 
     def set_state(self, state):

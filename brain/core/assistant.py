@@ -23,6 +23,7 @@ class Assistant(QObject):
 
     def __init__(self, bridge):
         super().__init__()
+
         print("Assistant created")
 
         self.listener = None
@@ -118,6 +119,8 @@ class Assistant(QObject):
 
                     print(response)
 
+                self.state_manager.set_state(JarvisState.IDLE)
+
                 self.listener.prepare_for_wake_word()
 
         except KeyboardInterrupt:
@@ -159,8 +162,16 @@ class Assistant(QObject):
             self.state_manager.set_state(JarvisState.EXECUTING)
 
             response = execute(result)
+
             print(response)
+
             self.bridge.send_response(response)
+
+        # -------------------------
+        # RETURN TO IDLE
+        # -------------------------
+
+        self.state_manager.set_state(JarvisState.IDLE)
 
     def initialize(self):
         """
