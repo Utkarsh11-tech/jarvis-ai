@@ -1,3 +1,5 @@
+import threading
+
 from PySide6.QtCore import QObject, Signal
 
 from brain.voices.listener import VoiceListener
@@ -18,8 +20,23 @@ class VoiceWorker(QObject):
         self.running = True
         self.bridge = bridge
 
-        # Listen for one-time follow-up requests.
-        self.bridge.voice_input_requested.connect(self.listen_for_follow_up)
+        # Indicates that JARVIS needs a follow-up
+        # voice response.
+        self.follow_up_requested = threading.Event()
+
+    # ==================================================
+    # REQUEST FOLLOW-UP
+    # ==================================================
+
+    def request_follow_up(self):
+        """
+        Requests one-time follow-up voice input.
+        """
+
+        self.follow_up_requested.set()
+
+        if self.listener:
+            self.listener.request_follow_up()
 
     # ==================================================
     # MAIN VOICE LOOP
@@ -32,34 +49,79 @@ class VoiceWorker(QObject):
 
         self.listener = VoiceListener()
 
-        print("JARVIS Voice Worker is ready.")
+        print(
+            "JARVIS Voice Worker is ready."
+        )
 
         try:
 
             while self.running:
 
-                # -------------------------
-                # SLEEPING
-                # -------------------------
+                # ==================================
+                # FOLLOW-UP INPUT
+                # ==================================
 
-                self.bridge.set_state(JarvisState.SLEEPING.value)
+                if self.follow_up_requested.is_set():
 
-                awakened = self.listener.listen_for_wake_word()
+                    self.follow_up_requested.clear()
 
-                if not awakened:
+                    self.bridge.set_state(
+                        JarvisState.LISTENING.value
+                    )
+
+                    print(
+                        "JARVIS: Waiting for your response..."
+                    )
+
+                    response = (
+                        self.listener.listen_for_command()
+                    )
+
+                    if response:
+
+                        self.command_received.emit(
+                            response
+                        )
+
                     continue
 
-                # -------------------------
+                # ==================================
+                # SLEEPING
+                # ==================================
+
+                self.bridge.set_state(
+                    JarvisState.SLEEPING.value
+                )
+
+                awakened = (
+                    self.listener.listen_for_wake_word()
+                )
+
+                if not awakened:
+
+                    continue
+
+                # ==================================
                 # LISTENING
-                # -------------------------
+                # ==================================
 
-                self.bridge.set_state(JarvisState.LISTENING.value)
+                self.bridge.set_state(
+                    JarvisState.LISTENING.value
+                )
 
-                command = self.listener.listen_for_command()
+                command = (
+                    self.listener.listen_for_command()
+                )
 
                 if command:
 
-                    self.command_received.emit(command)
+                    self.command_received.emit(
+                        command
+                    )
+
+                # ==================================
+                # PREPARE FOR NEXT WAKE WORD
+                # ==================================
 
                 self.listener.prepare_for_wake_word()
 
@@ -72,37 +134,6 @@ class VoiceWorker(QObject):
             self.finished.emit()
 
     # ==================================================
-    # FOLLOW-UP VOICE INPUT
-    # ==================================================
-
-    def listen_for_follow_up(self):
-        """
-        Listens for one command without requiring
-        the wake word.
-
-        Used for follow-up interactions such as
-        Chrome profile selection.
-        """
-
-        if not self.running:
-            return
-
-        if not self.listener:
-            return
-
-        self.bridge.set_state(JarvisState.LISTENING.value)
-
-        print("JARVIS: Waiting for your response...")
-
-        response = self.listener.listen_for_command()
-
-        if response:
-
-            print(f"You said: {response}")
-
-            self.command_received.emit(response)
-
-    # ==================================================
     # STOP
     # ==================================================
 
@@ -112,6 +143,8 @@ class VoiceWorker(QObject):
         """
 
         self.running = False
+
+        self.follow_up_requested.set()
 
         if self.listener:
 

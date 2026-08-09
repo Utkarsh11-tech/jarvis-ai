@@ -1,6 +1,6 @@
 import sys
 
-from PySide6.QtCore import QThread
+from PySide6.QtCore import QThread, Qt
 from PySide6.QtWidgets import QApplication
 
 from bridge.bridge import JarvisBridge
@@ -42,7 +42,9 @@ def main():
 
     assistant.moveToThread(brain_thread)
 
-    brain_thread.started.connect(assistant.run)
+    brain_thread.started.connect(
+        assistant.run
+    )
 
     brain_thread.start()
 
@@ -54,28 +56,39 @@ def main():
 
     voice_thread = QThread()
 
-    voice_worker.moveToThread(voice_thread)
+    voice_worker.moveToThread(
+        voice_thread
+    )
 
     # --------------------------------
     # Voice → Bridge
     # --------------------------------
 
-    voice_worker.command_received.connect(bridge.send_command)
+    voice_worker.command_received.connect(
+        bridge.send_command
+    )
 
     # --------------------------------
     # Bridge → Voice Worker
     # Request one-time follow-up input
     # --------------------------------
 
-    bridge.voice_input_requested.connect(voice_worker.request_follow_up)
+    bridge.voice_input_requested.connect(
+        voice_worker.request_follow_up,
+        Qt.DirectConnection,
+    )
 
     # --------------------------------
     # Voice Worker shutdown
     # --------------------------------
 
-    voice_worker.finished.connect(voice_thread.quit)
+    voice_worker.finished.connect(
+        voice_thread.quit
+    )
 
-    voice_thread.started.connect(voice_worker.run)
+    voice_thread.started.connect(
+        voice_worker.run
+    )
 
     voice_thread.start()
 
