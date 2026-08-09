@@ -6,6 +6,7 @@ from brain.core.executor import (
     get_acknowledgement,
 )
 
+from bridge.bridge import JarvisBridge
 
 from brain.voices.voice_manager import speak
 from brain.voices.listener import VoiceListener
@@ -18,10 +19,11 @@ from brain.core.state import (
 
 class Assistant:
 
-    def __init__(self):
+    def __init__(self, bridge):
         print("Assistant created")
 
         self.listener = None
+        self.bridge = bridge
         self.state_manager = StateManager()
 
     def start(self):
