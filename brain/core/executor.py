@@ -360,16 +360,25 @@ def open_folder(path):
 # ==========================================
 
 
-def play_media(target):
+def play_media(
+    target,
+    profile_directory=None,
+):
     """
     Plays the requested media on YouTube.
+
+    If a Chrome profile is supplied,
+    that profile is used for playback.
     """
 
     if not target:
 
         return "What would you like me to play?"
 
-    success = play_youtube(target)
+    success = play_youtube(
+        target,
+        profile_directory,
+    )
 
     if success:
 
@@ -540,7 +549,7 @@ def execute(command):
     if intent == "OPEN_APPLICATION":
 
         # Chrome requires profile selection
-        # through the GUI.
+        # through the Assistant.
         if target == "chrome":
 
             return "Chrome profile selection " "required."
@@ -580,7 +589,12 @@ def execute(command):
 
     if intent == "PLAY_MEDIA":
 
-        return play_media(target)
+        profile_directory = command.get("profile_directory")
+
+        return play_media(
+            target,
+            profile_directory,
+        )
 
     # ==========================================
     # WEB SEARCH
