@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QWidget
 
 class OrbState(Enum):
     IDLE = "idle"
+    SLEEPING = "sleeping"
     LISTENING = "listening"
     THINKING = "thinking"
     SPEAKING = "speaking"
