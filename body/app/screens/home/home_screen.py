@@ -1,4 +1,11 @@
 from PySide6.QtCore import Qt
+from PySide6.QtGui import (
+    QPainter,
+    QPen,
+    QColor,
+    QRadialGradient,
+    QLinearGradient,
+)
 
 from PySide6.QtWidgets import (
     QLabel,
@@ -18,6 +25,716 @@ from body.app.widgets.chrome_profile_selector import (
 from bridge.bridge import JarvisBridge
 
 
+# ==================================================
+# BACKGROUND
+# ==================================================
+
+
+class BackgroundFrame(QWidget):
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+            True,
+        )
+
+    def paintEvent(self, event):
+
+        painter = QPainter(self)
+
+        painter.setRenderHint(
+            QPainter.RenderHint.Antialiasing
+        )
+
+        width = self.width()
+        height = self.height()
+
+        center_x = width // 2
+        center_y = int(height * 0.35)
+
+        # ==========================================
+        # BASE BACKGROUND
+        # ==========================================
+
+        base_gradient = QLinearGradient(
+            0,
+            0,
+            0,
+            height,
+        )
+
+        base_gradient.setColorAt(
+            0.0,
+            QColor(1, 5, 10),
+        )
+
+        base_gradient.setColorAt(
+            0.5,
+            QColor(2, 9, 17),
+        )
+
+        base_gradient.setColorAt(
+            1.0,
+            QColor(0, 4, 9),
+        )
+
+        painter.fillRect(
+            self.rect(),
+            base_gradient,
+        )
+
+        # ==========================================
+        # CENTRAL BLUE GLOW
+        # ==========================================
+
+        glow = QRadialGradient(
+            center_x,
+            center_y,
+            min(width, height) * 0.48,
+        )
+
+        glow.setColorAt(
+            0.0,
+            QColor(0, 90, 140, 32),
+        )
+
+        glow.setColorAt(
+            0.30,
+            QColor(0, 55, 100, 20),
+        )
+
+        glow.setColorAt(
+            0.65,
+            QColor(0, 25, 55, 8),
+        )
+
+        glow.setColorAt(
+            1.0,
+            QColor(0, 0, 0, 0),
+        )
+
+        painter.fillRect(
+            self.rect(),
+            glow,
+        )
+
+        # ==========================================
+        # HORIZONTAL CENTER GLOW
+        # ==========================================
+
+        horizontal_glow = QLinearGradient(
+            0,
+            center_y,
+            width,
+            center_y,
+        )
+
+        horizontal_glow.setColorAt(
+            0.0,
+            QColor(0, 0, 0, 0),
+        )
+
+        horizontal_glow.setColorAt(
+            0.35,
+            QColor(0, 110, 170, 10),
+        )
+
+        horizontal_glow.setColorAt(
+            0.5,
+            QColor(0, 160, 220, 18),
+        )
+
+        horizontal_glow.setColorAt(
+            0.65,
+            QColor(0, 110, 170, 10),
+        )
+
+        horizontal_glow.setColorAt(
+            1.0,
+            QColor(0, 0, 0, 0),
+        )
+
+        painter.fillRect(
+            0,
+            center_y - 1,
+            width,
+            2,
+            horizontal_glow,
+        )
+
+        # ==========================================
+        # CIRCUIT LINES
+        # ==========================================
+
+        circuit_pen = QPen(
+            QColor(
+                0,
+                110,
+                170,
+                30,
+            ),
+            1,
+        )
+
+        painter.setPen(
+            circuit_pen
+        )
+
+        # ==========================================
+        # LEFT CIRCUIT
+        # ==========================================
+
+        left_x = 55
+
+        painter.drawLine(
+            left_x,
+            155,
+            left_x + 150,
+            155,
+        )
+
+        painter.drawLine(
+            left_x + 150,
+            155,
+            left_x + 185,
+            190,
+        )
+
+        painter.drawLine(
+            left_x + 185,
+            190,
+            left_x + 260,
+            190,
+        )
+
+        painter.drawLine(
+            left_x,
+            205,
+            left_x + 105,
+            205,
+        )
+
+        painter.drawLine(
+            left_x + 105,
+            205,
+            left_x + 130,
+            230,
+        )
+
+        painter.drawLine(
+            left_x + 130,
+            230,
+            left_x + 220,
+            230,
+        )
+
+        # ==========================================
+        # RIGHT CIRCUIT
+        # ==========================================
+
+        right_x = width - 55
+
+        painter.drawLine(
+            right_x - 150,
+            155,
+            right_x,
+            155,
+        )
+
+        painter.drawLine(
+            right_x - 185,
+            190,
+            right_x - 150,
+            155,
+        )
+
+        painter.drawLine(
+            right_x - 260,
+            190,
+            right_x - 185,
+            190,
+        )
+
+        painter.drawLine(
+            right_x - 105,
+            205,
+            right_x,
+            205,
+        )
+
+        painter.drawLine(
+            right_x - 130,
+            230,
+            right_x - 105,
+            205,
+        )
+
+        painter.drawLine(
+            right_x - 220,
+            230,
+            right_x - 130,
+            230,
+        )
+
+        # ==========================================
+        # SIDE TECHNICAL LINES
+        # ==========================================
+
+        side_pen = QPen(
+            QColor(
+                0,
+                130,
+                190,
+                24,
+            ),
+            1,
+        )
+
+        painter.setPen(
+            side_pen
+        )
+
+        # LEFT
+        for y in range(
+            270,
+            height - 110,
+            55,
+        ):
+
+            painter.drawLine(
+                55,
+                y,
+                130,
+                y,
+            )
+
+            painter.drawLine(
+                130,
+                y,
+                155,
+                y + 18,
+            )
+
+            painter.drawLine(
+                155,
+                y + 18,
+                220,
+                y + 18,
+            )
+
+        # RIGHT
+        for y in range(
+            270,
+            height - 110,
+            55,
+        ):
+
+            painter.drawLine(
+                width - 55,
+                y,
+                width - 130,
+                y,
+            )
+
+            painter.drawLine(
+                width - 130,
+                y,
+                width - 155,
+                y + 18,
+            )
+
+            painter.drawLine(
+                width - 155,
+                y + 18,
+                width - 220,
+                y + 18,
+            )
+
+        # ==========================================
+        # SMALL DATA TICKS
+        # ==========================================
+
+        tick_pen = QPen(
+            QColor(
+                0,
+                160,
+                220,
+                35,
+            ),
+            1,
+        )
+
+        painter.setPen(
+            tick_pen
+        )
+
+        for y in range(
+            160,
+            height - 130,
+            16,
+        ):
+
+            painter.drawLine(
+                80,
+                y,
+                95,
+                y,
+            )
+
+            painter.drawLine(
+                width - 95,
+                y,
+                width - 80,
+                y,
+            )
+
+        # ==========================================
+        # TECHNICAL DOTS
+        # ==========================================
+
+        dot_pen = QPen(
+            QColor(
+                0,
+                180,
+                240,
+                65,
+            ),
+            2,
+        )
+
+        painter.setPen(
+            dot_pen
+        )
+
+        dots = [
+            (55, 155),
+            (55, 205),
+            (130, 230),
+            (width - 55, 155),
+            (width - 55, 205),
+            (width - 130, 230),
+        ]
+
+        for x, y in dots:
+
+            painter.drawPoint(
+                x,
+                y,
+            )
+
+        # ==========================================
+        # SUBTLE CIRCULAR HUD RINGS
+        # ==========================================
+
+        ring_pen = QPen(
+            QColor(
+                0,
+                120,
+                180,
+                15,
+            ),
+            1,
+        )
+
+        painter.setPen(
+            ring_pen
+        )
+
+        ring_center_y = int(
+            height * 0.36
+        )
+
+        for radius in (
+            260,
+            310,
+            365,
+        ):
+
+            painter.drawEllipse(
+                center_x - radius,
+                ring_center_y - radius,
+                radius * 2,
+                radius * 2,
+            )
+
+        # ==========================================
+        # TOP DATA LINES
+        # ==========================================
+
+        top_pen = QPen(
+            QColor(
+                0,
+                150,
+                210,
+                40,
+            ),
+            1,
+        )
+
+        painter.setPen(
+            top_pen
+        )
+
+        painter.drawLine(
+            55,
+            78,
+            300,
+            78,
+        )
+
+        painter.drawLine(
+            700,
+            78,
+            width - 55,
+            78,
+        )
+
+        painter.drawLine(
+            55,
+            92,
+            210,
+            92,
+        )
+
+        painter.drawLine(
+            width - 210,
+            92,
+            width - 55,
+            92,
+        )
+
+        # ==========================================
+        # BOTTOM DATA LINES
+        # ==========================================
+
+        painter.drawLine(
+            55,
+            height - 50,
+            300,
+            height - 50,
+        )
+
+        painter.drawLine(
+            700,
+            height - 50,
+            width - 55,
+            height - 50,
+        )
+
+        painter.drawLine(
+            55,
+            height - 36,
+            210,
+            height - 36,
+        )
+
+        painter.drawLine(
+            width - 210,
+            height - 36,
+            width - 55,
+            height - 36,
+        )
+
+
+# ==================================================
+# HUD FRAME
+# ==================================================
+
+
+class HUDFrame(QWidget):
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+            True,
+        )
+
+    def paintEvent(self, event):
+
+        painter = QPainter(self)
+
+        painter.setRenderHint(
+            QPainter.RenderHint.Antialiasing
+        )
+
+        width = self.width()
+        height = self.height()
+
+        # ==========================================
+        # HUD FRAME
+        # ==========================================
+
+        pen = QPen(
+            QColor(
+                0,
+                150,
+                210,
+                75,
+            ),
+            1,
+        )
+
+        painter.setPen(
+            pen
+        )
+
+        margin = 8
+        corner = 28
+
+        # ==========================================
+        # TOP LEFT
+        # ==========================================
+
+        painter.drawLine(
+            margin,
+            margin,
+            margin + corner,
+            margin,
+        )
+
+        painter.drawLine(
+            margin,
+            margin,
+            margin,
+            margin + corner,
+        )
+
+        # ==========================================
+        # TOP RIGHT
+        # ==========================================
+
+        painter.drawLine(
+            width - margin - corner,
+            margin,
+            width - margin,
+            margin,
+        )
+
+        painter.drawLine(
+            width - margin,
+            margin,
+            width - margin,
+            margin + corner,
+        )
+
+        # ==========================================
+        # BOTTOM LEFT
+        # ==========================================
+
+        painter.drawLine(
+            margin,
+            height - margin,
+            margin + corner,
+            height - margin,
+        )
+
+        painter.drawLine(
+            margin,
+            height - margin - corner,
+            margin,
+            height - margin,
+        )
+
+        # ==========================================
+        # BOTTOM RIGHT
+        # ==========================================
+
+        painter.drawLine(
+            width - margin - corner,
+            height - margin,
+            width - margin,
+            height - margin,
+        )
+
+        painter.drawLine(
+            width - margin,
+            height - margin - corner,
+            width - margin,
+            height - margin,
+        )
+
+        # ==========================================
+        # SIDE MARKERS
+        # ==========================================
+
+        marker_pen = QPen(
+            QColor(
+                0,
+                217,
+                255,
+                45,
+            ),
+            1,
+        )
+
+        painter.setPen(
+            marker_pen
+        )
+
+        center_y = height // 2
+
+        painter.drawLine(
+            margin,
+            center_y - 40,
+            margin,
+            center_y + 40,
+        )
+
+        painter.drawLine(
+            width - margin,
+            center_y - 40,
+            width - margin,
+            center_y + 40,
+        )
+
+        # ==========================================
+        # SMALL HUD TICKS
+        # ==========================================
+
+        tick_color = QColor(
+            0,
+            217,
+            255,
+            65,
+        )
+
+        painter.setPen(
+            QPen(
+                tick_color,
+                1,
+            )
+        )
+
+        for x in range(
+            80,
+            width - 80,
+            80,
+        ):
+
+            painter.drawLine(
+                x,
+                margin,
+                x,
+                margin + 5,
+            )
+
+            painter.drawLine(
+                x,
+                height - margin - 5,
+                x,
+                height - margin,
+            )
+
+
+# ==================================================
+# MAIN WINDOW
+# ==================================================
+
+
 class MainWindow(QMainWindow):
 
     def __init__(self, bridge):
@@ -27,27 +744,33 @@ class MainWindow(QMainWindow):
         # WINDOW
         # ==========================================
 
-        self.setWindowTitle("JARVIS")
-        self.resize(1000, 650)
+        self.setWindowTitle(
+            "J.A.R.V.I.S"
+        )
+
+        self.resize(
+            1000,
+            650,
+        )
 
         # ==========================================
-        # JARVIS THEME
+        # MAIN WINDOW STYLE
         # ==========================================
 
         self.setStyleSheet(
             """
             QMainWindow {
-                background-color: #050A12;
+                background-color: #01050A;
             }
 
             QWidget {
-                background-color: #050A12;
-                color: #DDE7F2;
+                background: transparent;
+                color: #DDEFFF;
             }
 
             QLabel {
                 background: transparent;
-                color: #DDE7F2;
+                color: #DDEFFF;
             }
             """
         )
@@ -61,7 +784,7 @@ class MainWindow(QMainWindow):
         self.central_widget.setStyleSheet(
             """
             QWidget {
-                background-color: #050A12;
+                background: transparent;
             }
             """
         )
@@ -71,16 +794,31 @@ class MainWindow(QMainWindow):
         )
 
         # ==========================================
+        # BACKGROUND
+        # ==========================================
+
+        self.background = BackgroundFrame(
+            self.central_widget
+        )
+
+        self.background.setGeometry(
+            self.central_widget.rect()
+        )
+
+        self.background.lower()
+
+        # ==========================================
         # MAIN LAYOUT
         # ==========================================
 
         self.main_layout = QVBoxLayout()
 
+        # ORIGINAL PROPORTIONS
         self.main_layout.setContentsMargins(
+            38,
             28,
-            20,
-            28,
-            18,
+            38,
+            24,
         )
 
         self.main_layout.setSpacing(
@@ -90,6 +828,20 @@ class MainWindow(QMainWindow):
         self.central_widget.setLayout(
             self.main_layout
         )
+
+        # ==========================================
+        # HUD FRAME
+        # ==========================================
+
+        self.hud_frame = HUDFrame(
+            self.central_widget
+        )
+
+        self.hud_frame.setGeometry(
+            self.central_widget.rect()
+        )
+
+        self.hud_frame.raise_()
 
         # ==========================================
         # HEADER
@@ -121,6 +873,11 @@ class MainWindow(QMainWindow):
         # ==========================================
 
         self.orb = OrbWidget()
+
+        # IMPORTANT:
+        # No minimum/maximum height here.
+        # The original layout controls the orb size.
+        # ==========================================
 
         # ==========================================
         # MICROPHONE
@@ -159,7 +916,7 @@ class MainWindow(QMainWindow):
         )
 
         # ==========================================
-        # INITIAL STATE
+        # INITIAL ORB STATE
         # ==========================================
 
         self.orb.set_state(
@@ -171,7 +928,7 @@ class MainWindow(QMainWindow):
         # ==========================================
 
         self.status = QLabel(
-            "Status : Waiting for command..."
+            "STATUS  :  WAITING FOR COMMAND"
         )
 
         self.status.setAlignment(
@@ -182,9 +939,11 @@ class MainWindow(QMainWindow):
             """
             QLabel {
                 background: transparent;
-                color: #6F91B5;
-                font-size: 13px;
-                letter-spacing: 1px;
+                color: #5C91B5;
+                font-family: "Orbitron", "Eurostile", "Arial";
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 2px;
             }
             """
         )
@@ -221,10 +980,11 @@ class MainWindow(QMainWindow):
             """
             QLabel {
                 background: transparent;
-                color: #425B75;
+                color: #34546B;
                 font-family: "Orbitron", "Eurostile", "Arial";
-                font-size: 11px;
-                letter-spacing: 4px;
+                font-size: 10px;
+                font-weight: 600;
+                letter-spacing: 3px;
             }
             """
         )
@@ -233,33 +993,41 @@ class MainWindow(QMainWindow):
         # ADD WIDGETS
         # ==========================================
 
+        # ORIGINAL PROPORTIONS
+        # Header = 1
+        # Orb = 5
+        # Status = 1
+        # Chat = 3
+        # Chat input = default
+        # Footer = 1
+
         self.main_layout.addWidget(
             self.header,
-            1
+            1,
         )
 
         self.main_layout.addWidget(
             self.orb,
-            5
+            6,
         )
 
         self.main_layout.addWidget(
             self.status,
-            1
+            1,
         )
 
         self.main_layout.addWidget(
             self.chat,
-            3
+            2,
         )
 
         self.main_layout.addWidget(
-            self.chat_input
+            self.chat_input,
         )
 
         self.main_layout.addWidget(
             self.footer,
-            1
+            1,
         )
 
         # ==========================================
@@ -269,10 +1037,44 @@ class MainWindow(QMainWindow):
         self.profile_selector = None
 
     # ==================================================
+    # RESIZE HUD
+    # ==================================================
+
+    def resizeEvent(
+        self,
+        event,
+    ):
+
+        super().resizeEvent(
+            event
+        )
+
+        if hasattr(
+            self,
+            "background",
+        ):
+
+            self.background.setGeometry(
+                self.central_widget.rect()
+            )
+
+        if hasattr(
+            self,
+            "hud_frame",
+        ):
+
+            self.hud_frame.setGeometry(
+                self.central_widget.rect()
+            )
+
+    # ==================================================
     # HANDLE TEXT MESSAGE
     # ==================================================
 
-    def handle_text_message(self, message):
+    def handle_text_message(
+        self,
+        message,
+    ):
 
         self.chat.add_user_message(
             message
@@ -286,16 +1088,15 @@ class MainWindow(QMainWindow):
     # HANDLE PROFILE SELECTION REQUEST
     # ==================================================
 
-    def handle_profile_selection(self, profiles):
-        """
-        Displays the Chrome profile selector
-        when the Brain requests one.
-        """
+    def handle_profile_selection(
+        self,
+        profiles,
+    ):
 
         self.profile_selector = (
             ChromeProfileSelector(
                 profiles,
-                self
+                self,
             )
         )
 
@@ -311,12 +1112,8 @@ class MainWindow(QMainWindow):
 
     def handle_profile_selected(
         self,
-        profile_directory
+        profile_directory,
     ):
-        """
-        Sends the selected Chrome profile
-        back to the Brain.
-        """
 
         self.bridge.send_profile_selection(
             profile_directory
@@ -338,28 +1135,32 @@ class MainWindow(QMainWindow):
             )
 
             self.status.setText(
-                "Status : Listening..."
+                "STATUS  :  LISTENING"
             )
 
-            # Ask the existing VoiceWorker
-            # to capture one voice command.
             self.bridge.request_voice_input()
 
-        elif self.orb.state == OrbState.LISTENING:
+        elif (
+            self.orb.state
+            == OrbState.LISTENING
+        ):
 
             self.orb.set_state(
                 OrbState.IDLE
             )
 
             self.status.setText(
-                "Status : Waiting for command..."
+                "STATUS  :  WAITING FOR COMMAND"
             )
 
     # ==================================================
     # HANDLE JARVIS STATE
     # ==================================================
 
-    def handle_state_change(self, state):
+    def handle_state_change(
+        self,
+        state,
+    ):
 
         try:
 
@@ -372,10 +1173,13 @@ class MainWindow(QMainWindow):
             )
 
             self.status.setText(
-                f"Status : {state.title()}"
+                f"STATUS  :  {state.upper()}"
             )
 
-            if orb_state == OrbState.LISTENING:
+            if (
+                orb_state
+                == OrbState.LISTENING
+            ):
 
                 self.microphone.start()
 
@@ -386,14 +1190,17 @@ class MainWindow(QMainWindow):
         except ValueError:
 
             self.status.setText(
-                f"Status : Unknown state ({state})"
+                f"STATUS  :  {state.upper()}"
             )
 
     # ==================================================
     # HANDLE JARVIS RESPONSE
     # ==================================================
 
-    def handle_jarvis_response(self, response):
+    def handle_jarvis_response(
+        self,
+        response,
+    ):
 
         self.chat.add_jarvis_message(
             response

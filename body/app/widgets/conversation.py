@@ -1,6 +1,7 @@
 from PySide6.QtCore import Qt
 
 from PySide6.QtWidgets import (
+    QFrame,
     QScrollArea,
     QVBoxLayout,
     QWidget,
@@ -9,69 +10,116 @@ from PySide6.QtWidgets import (
 from body.app.widgets.chat_bubble import ChatBubble
 
 
-class ConversationWidget(QScrollArea):
+class ConversationWidget(QWidget):
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # ---------- Scroll Area ----------
-        self.setWidgetResizable(True)
+        # ==========================================
+        # MAIN LAYOUT
+        # ==========================================
 
-        self.setHorizontalScrollBarPolicy(
+        self.main_layout = QVBoxLayout(
+            self
+        )
+
+        self.main_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0
+        )
+
+        self.main_layout.setSpacing(
+            0
+        )
+
+        # ==========================================
+        # CONVERSATION FRAME
+        # ==========================================
+
+        self.frame = QFrame()
+
+        self.frame.setObjectName(
+            "conversationFrame"
+        )
+
+        self.frame.setStyleSheet(
+            """
+            QFrame#conversationFrame {
+                background-color: #02070D;
+                border: 1px solid #126486;
+                border-radius: 0px;
+            }
+            """
+        )
+
+        self.main_layout.addWidget(
+            self.frame
+        )
+
+        # ==========================================
+        # FRAME LAYOUT
+        # ==========================================
+
+        self.frame_layout = QVBoxLayout(
+            self.frame
+        )
+
+        self.frame_layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0
+        )
+
+        self.frame_layout.setSpacing(
+            0
+        )
+
+        # ==========================================
+        # SCROLL AREA
+        # ==========================================
+
+        self.scroll_area = QScrollArea()
+
+        self.scroll_area.setWidgetResizable(
+            True
+        )
+
+        self.scroll_area.setFrameShape(
+            QFrame.Shape.NoFrame
+        )
+
+        self.scroll_area.setHorizontalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
 
-        self.setVerticalScrollBarPolicy(
+        self.scroll_area.setVerticalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
 
-        # ---------- Container ----------
-        self.container = QWidget()
-
-        self.message_layout = QVBoxLayout(
-            self.container
-        )
-
-        self.message_layout.setAlignment(
-            Qt.AlignmentFlag.AlignTop
-        )
-
-        self.message_layout.setContentsMargins(
-            20,
-            15,
-            20,
-            15
-        )
-
-        self.message_layout.setSpacing(
-            14
-        )
-
-        self.setWidget(
-            self.container
-        )
-
-        # ---------- Styling ----------
-        self.setStyleSheet(
+        self.scroll_area.setStyleSheet(
             """
             QScrollArea {
-                background-color: #0F0F13;
+                background-color: #02070D;
                 border: none;
             }
 
             QScrollBar:vertical {
                 width: 6px;
                 background: transparent;
-                margin: 5px 0px 5px 0px;
+                margin: 8px 3px 8px 3px;
             }
 
             QScrollBar::handle:vertical {
-                background: #252530;
+                background: #126486;
                 border-radius: 3px;
                 min-height: 30px;
             }
 
             QScrollBar::handle:vertical:hover {
-                background: #353545;
+                background: #00D9FF;
             }
 
             QScrollBar::add-line:vertical,
@@ -86,11 +134,57 @@ class ConversationWidget(QScrollArea):
             """
         )
 
+        self.frame_layout.addWidget(
+            self.scroll_area
+        )
+
+        # ==========================================
+        # MESSAGE CONTAINER
+        # ==========================================
+
+        self.container = QWidget()
+
+        self.container.setStyleSheet(
+            """
+            QWidget {
+                background-color: #02070D;
+                border: none;
+            }
+            """
+        )
+
+        self.message_layout = QVBoxLayout(
+            self.container
+        )
+
+        self.message_layout.setAlignment(
+            Qt.AlignmentFlag.AlignTop
+        )
+
+        self.message_layout.setContentsMargins(
+            24,
+            20,
+            24,
+            20
+        )
+
+        self.message_layout.setSpacing(
+            14
+        )
+
+        self.scroll_area.setWidget(
+            self.container
+        )
+
     # ==================================================
     # ADD USER MESSAGE
     # ==================================================
 
-    def add_user_message(self, message):
+    def add_user_message(
+        self,
+        message
+    ):
+
         bubble = ChatBubble(
             message,
             is_user=True
@@ -107,7 +201,11 @@ class ConversationWidget(QScrollArea):
     # ADD JARVIS MESSAGE
     # ==================================================
 
-    def add_jarvis_message(self, message):
+    def add_jarvis_message(
+        self,
+        message
+    ):
+
         bubble = ChatBubble(
             message,
             is_user=False
@@ -124,8 +222,13 @@ class ConversationWidget(QScrollArea):
     # SCROLL TO BOTTOM
     # ==================================================
 
-    def scroll_to_bottom(self):
-        scrollbar = self.verticalScrollBar()
+    def scroll_to_bottom(
+        self
+    ):
+
+        scrollbar = (
+            self.scroll_area.verticalScrollBar()
+        )
 
         scrollbar.setValue(
             scrollbar.maximum()
