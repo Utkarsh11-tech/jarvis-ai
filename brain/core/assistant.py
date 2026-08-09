@@ -24,7 +24,7 @@ class Assistant:
 
         self.listener = None
         self.bridge = bridge
-        self.state_manager = StateManager()
+        self.state_manager = StateManager(bridge)
 
     def start(self):
         self.initialize()

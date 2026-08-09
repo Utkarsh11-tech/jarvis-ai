@@ -1,4 +1,5 @@
 from enum import Enum
+from bridge.bridge import JarvisBridge
 
 
 class JarvisState(Enum):
@@ -18,8 +19,9 @@ class StateManager:
     Manages the current state of JARVIS.
     """
 
-    def __init__(self):
+    def __init__(self, bridge):
         self.current_state = JarvisState.SLEEPING
+        self.bridge = bridge
 
     def set_state(self, state):
         """
@@ -29,6 +31,8 @@ class StateManager:
         self.current_state = state
 
         print(f"JARVIS STATE: {state.value.upper()}")
+
+        self.bridge.set_state(state.value)
 
     def get_state(self):
         """
