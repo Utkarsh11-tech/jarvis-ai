@@ -25,10 +25,20 @@ def get_chrome_profiles():
     )
 
     try:
-        with open(local_state_path, "r", encoding="utf-8") as file:
+
+        with open(
+            local_state_path,
+            "r",
+            encoding="utf-8",
+        ) as file:
+
             local_state = json.load(file)
 
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (
+        FileNotFoundError,
+        json.JSONDecodeError,
+    ):
+
         return {}
 
     profile_info = local_state.get("profile", {}).get("info_cache", {})
@@ -36,42 +46,17 @@ def get_chrome_profiles():
     return profile_info
 
 
-def open_chrome():
+def open_chrome(profile_directory):
     """
-    Displays available Chrome profiles and opens the selected one.
+    Opens Chrome using the selected profile directory.
     """
+
+    if not profile_directory:
+        return "No Chrome profile was selected."
 
     profiles = get_chrome_profiles()
 
-    if not profiles:
-        return "No Chrome profiles were found."
-
-    profile_list = list(profiles.items())
-
-    print("\nAvailable Chrome profiles:")
-
-    for index, (profile_directory, profile_data) in enumerate(
-        profile_list,
-        start=1,
-    ):
-        profile_name = profile_data.get("name", "Unknown")
-
-        print(f"{index}. {profile_name}")
-
-    while True:
-
-        choice = input("JARVIS: Select a profile number: ")
-
-        if choice.isdigit():
-
-            choice = int(choice)
-
-            if 1 <= choice <= len(profile_list):
-                break
-
-        print("JARVIS: Please select a valid profile number.")
-
-    selected_directory, selected_profile = profile_list[choice - 1]
+    selected_profile = profiles.get(profile_directory, {})
 
     selected_name = selected_profile.get("name", "Unknown")
 
@@ -82,7 +67,7 @@ def open_chrome():
         subprocess.Popen(
             [
                 chrome_path,
-                f"--profile-directory={selected_directory}",
+                f"--profile-directory={profile_directory}",
             ]
         )
 
@@ -224,9 +209,10 @@ def find_filesystem_matches(target):
 
                     file_matches.append(os.path.join(root, file))
 
-        # Stop searching after finding a result on
-        # a non-C drive.
+        # Stop searching after finding a result
+        # on a non-C drive.
         if (file_matches or folder_matches) and drive != "C:\\":
+
             break
 
     return file_matches, folder_matches
@@ -239,13 +225,15 @@ def search_filesystem(target):
     """
 
     if not target:
-        return "Please tell me the name of the file or folder."
+
+        return "Please tell me the name " "of the file or folder."
 
     file_matches, folder_matches = find_filesystem_matches(target)
 
     total_matches = len(file_matches) + len(folder_matches)
 
     if total_matches == 0:
+
         return f"I couldn't find {target}."
 
     if total_matches == 1:
@@ -256,7 +244,7 @@ def search_filesystem(target):
 
         return f"I found the folder {target}.\n" f"Location: {folder_matches[0]}"
 
-    response = f"I found {total_matches} matches for {target}:\n"
+    response = f"I found {total_matches} " f"matches for {target}:\n"
 
     counter = 1
 
@@ -284,7 +272,7 @@ def open_file(path):
 
         os.startfile(path)
 
-        return f"Opening {os.path.basename(path)}."
+        return f"Opening " f"{os.path.basename(path)}."
 
     except OSError:
 
@@ -319,9 +307,11 @@ def get_acknowledgement(command):
     if intent == "OPEN_APPLICATION":
 
         if target == "chrome":
+
             return "Opening Chrome."
 
         if target in APPLICATIONS:
+
             return f"Opening {target}."
 
         return f"Searching for {target}."
@@ -329,17 +319,20 @@ def get_acknowledgement(command):
     if intent == "WEB_SEARCH":
 
         if not target:
-            return "What would you like me to search for?"
+
+            return "What would you like " "me to search for?"
 
         return f"Searching for {target}."
 
     if intent == "SYSTEM_COMMAND":
 
         if target == "shutdown":
-            return "Preparing to shut down the computer."
+
+            return "Preparing to shut down " "the computer."
 
         if target == "restart":
-            return "Preparing to restart the computer."
+
+            return "Preparing to restart " "the computer."
 
         return f"Preparing to perform {target}."
 
@@ -360,9 +353,11 @@ def execute(command):
 
     if intent == "OPEN_APPLICATION":
 
-        # Chrome requires profile selection.
+        # Chrome requires profile selection
+        # through the GUI.
         if target == "chrome":
-            return open_chrome()
+
+            return "Chrome profile selection required."
 
         application = APPLICATIONS.get(target)
 
@@ -395,7 +390,8 @@ def execute(command):
     if intent == "WEB_SEARCH":
 
         if not target:
-            return "What would you like me to search for?"
+
+            return "What would you like " "me to search for?"
 
         search_url = "https://www.google.com/search?q=" + quote(target)
 
@@ -411,4 +407,4 @@ def execute(command):
 
         return search_filesystem(target)
 
-    return "I don't know how to execute that command."
+    return "I don't know how to execute " "that command."
