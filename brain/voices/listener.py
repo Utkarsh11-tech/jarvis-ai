@@ -197,6 +197,8 @@ class VoiceListener:
 
         self.running = False
 
+        self._stop_wake_stream()
+
     def close(self):
         """
         Releases all microphone resources.
