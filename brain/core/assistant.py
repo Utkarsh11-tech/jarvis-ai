@@ -31,6 +31,15 @@ class Assistant(QObject):
 
         self.bridge.command_requested.connect(self.handle_command)
 
+    def run(self):
+        """
+        Starts the Brain worker.
+        """
+
+        self.initialize()
+
+        print("JARVIS Brain is ready.")
+
     def start(self):
         self.initialize()
 
@@ -149,13 +158,9 @@ class Assistant(QObject):
 
             self.state_manager.set_state(JarvisState.EXECUTING)
 
-            response = execute(result) 
+            response = execute(result)
             print(response)
-            self.bridge.send_response( 
-                response
-            )
-
-          
+            self.bridge.send_response(response)
 
     def initialize(self):
         """

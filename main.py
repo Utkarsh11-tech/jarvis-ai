@@ -48,6 +48,8 @@ def main():
     # Brain is ready.
     # Voice loop will be integrated separately.
 
+    brain_thread.started.connect(assistant.run)
+
     brain_thread.start()
 
     # ================================================
