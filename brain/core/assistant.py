@@ -1,3 +1,7 @@
+import re
+import webbrowser
+from urllib.parse import quote
+
 from PySide6.QtCore import QObject
 
 from brain.core.normalizer import normalize
@@ -21,6 +25,96 @@ from brain.core.state import (
     StateManager,
 )
 
+# ==================================================
+# CHROME PROFILE COMMAND PARSER
+# ==================================================
+
+
+def extract_chrome_profile_command(command):
+    """
+    Extracts a Chrome profile name and the remaining
+    command from natural-language Chrome profile
+    requests.
+
+    Examples:
+
+        open vinod chrome profile
+            -> ("vinod", "")
+
+        open the chrome profile of vinod
+            -> ("vinod", "")
+
+        open vinod chrome profile and play believer
+            -> ("vinod", "play believer")
+
+        open the chrome profile of vinod and then
+        play believer
+            -> ("vinod", "play believer")
+
+        open vinod chrome profile and search
+        machine learning
+            -> ("vinod", "search machine learning")
+    """
+
+    command = normalize(command)
+
+    if not command:
+        return "", ""
+
+    command = command.lower().strip()
+
+    patterns = [
+        # ------------------------------------------
+        # open the chrome profile of vinod
+        # ------------------------------------------
+        (
+            r"^open\s+(?:the\s+)?chrome\s+profile\s+of\s+"
+            r"(.+?)(?:\s+and(?:\s+then)?\s+(.+))?$"
+        ),
+        # ------------------------------------------
+        # open vinod's chrome profile
+        # ------------------------------------------
+        (r"^open\s+(.+?)['’]s\s+chrome\s+profile" r"(?:\s+and(?:\s+then)?\s+(.+))?$"),
+        # ------------------------------------------
+        # open vinod chrome profile
+        # ------------------------------------------
+        (r"^open\s+(.+?)\s+chrome\s+profile" r"(?:\s+and(?:\s+then)?\s+(.+))?$"),
+        # ------------------------------------------
+        # open chrome profile vinod
+        # ------------------------------------------
+        (r"^open\s+chrome\s+profile\s+(.+?)" r"(?:\s+and(?:\s+then)?\s+(.+))?$"),
+    ]
+
+    for pattern in patterns:
+
+        match = re.match(
+            pattern,
+            command,
+        )
+
+        if not match:
+            continue
+
+        profile_name = match.group(1).strip()
+
+        remaining_command = ""
+
+        if match.group(2):
+
+            remaining_command = match.group(2).strip()
+
+        return (
+            profile_name,
+            remaining_command,
+        )
+
+    return "", ""
+
+
+# ==================================================
+# ASSISTANT
+# ==================================================
+
 
 class Assistant(QObject):
 
@@ -37,6 +131,7 @@ class Assistant(QObject):
         self.context = ContextManager()
 
         self.awaiting_chrome_profile = False
+
         self.chrome_profiles = {}
 
         self.bridge.command_requested.connect(self.handle_command)
@@ -64,6 +159,24 @@ class Assistant(QObject):
         """
         Handles commands received from the Body.
         """
+
+        if not command:
+            return
+
+        # ==========================================
+        # DIRECTED CHROME PROFILE COMMAND
+        # ==========================================
+
+        profile_name, remaining_command = extract_chrome_profile_command(command)
+
+        if profile_name:
+
+            self.handle_directed_chrome_command(
+                profile_name,
+                remaining_command,
+            )
+
+            return
 
         # ==========================================
         # CHROME PROFILE RESPONSE
@@ -104,7 +217,7 @@ class Assistant(QObject):
             speak(acknowledgement)
 
             # -------------------------
-            # CHROME
+            # NORMAL CHROME
             # -------------------------
 
             if result["intent"] == "OPEN_APPLICATION" and result["target"] == "chrome":
@@ -126,7 +239,7 @@ class Assistant(QObject):
             self.bridge.send_response(response)
 
             # -------------------------
-            # UPDATE RESPONSE
+            # UPDATE CONTEXT
             # -------------------------
 
             self.context.remember(
@@ -140,6 +253,332 @@ class Assistant(QObject):
         # -------------------------
 
         self.state_manager.set_state(JarvisState.IDLE)
+
+    # ==================================================
+    # RESOLVE CHROME PROFILE
+    # ==================================================
+
+    def resolve_chrome_profile(
+        self,
+        profile_name,
+    ):
+        """
+        Finds a Chrome profile using its spoken name.
+        """
+
+        profiles = get_chrome_profiles()
+
+        if not profiles:
+            return None
+
+        profile_name = normalize(profile_name).lower().strip()
+
+        # Remove unnecessary words from
+        # the spoken profile name.
+        profile_name = re.sub(
+            r"\b(profile|chrome)\b",
+            "",
+            profile_name,
+        ).strip()
+
+        for (
+            profile_directory,
+            profile_data,
+        ) in profiles.items():
+
+            name = (
+                profile_data.get(
+                    "name",
+                    "",
+                )
+                .lower()
+                .strip()
+            )
+
+            if profile_name == name or profile_name in name or name in profile_name:
+
+                return (
+                    profile_directory,
+                    profile_data,
+                )
+
+        return None
+
+    # ==================================================
+    # NORMALIZE MEDIA COMMAND
+    # ==================================================
+
+    def clean_media_command(
+        self,
+        command,
+    ):
+        """
+        Cleans common spoken media phrases.
+
+        Examples:
+
+            play believer
+                -> believer
+
+            play believer on youtube
+                -> believer
+
+            play believer on yt
+                -> believer
+
+            play believer on youtube music
+                -> believer
+        """
+
+        command = normalize(command).strip()
+
+        command = re.sub(
+            r"\s+on\s+(youtube\s+music|youtube|yt)\s*$",
+            "",
+            command,
+            flags=re.IGNORECASE,
+        )
+
+        return command.strip()
+
+    # ==================================================
+    # EXECUTE DIRECTED CHROME COMMAND
+    # ==================================================
+
+    def handle_directed_chrome_command(
+        self,
+        profile_name,
+        remaining_command,
+    ):
+        """
+        Opens a specific Chrome profile directly.
+
+        If a remaining command exists, it is executed
+        using the selected Chrome profile.
+        """
+
+        selected_profile = self.resolve_chrome_profile(profile_name)
+
+        if selected_profile is None:
+
+            message = f"I couldn't find the Chrome " f"profile {profile_name}."
+
+            print(f"JARVIS: {message}")
+
+            speak(message)
+
+            self.bridge.send_response(message)
+
+            self.state_manager.set_state(JarvisState.IDLE)
+
+            return
+
+        profile_directory = selected_profile[0]
+
+        profile_data = selected_profile[1]
+
+        actual_profile_name = profile_data.get(
+            "name",
+            profile_name,
+        )
+
+        # ==========================================
+        # OPEN CHROME PROFILE
+        # ==========================================
+
+        self.state_manager.set_state(JarvisState.EXECUTING)
+
+        message = f"Opening Chrome with " f"{actual_profile_name}."
+
+        print(f"JARVIS: {message}")
+
+        speak(message)
+
+        response = open_chrome(profile_directory)
+
+        print(response)
+
+        self.bridge.send_response(response)
+
+        # ==========================================
+        # NO FOLLOW-UP
+        # ==========================================
+
+        if not remaining_command:
+
+            self.context.remember(
+                intent="OPEN_APPLICATION",
+                target="chrome",
+                response=response,
+            )
+
+            self.state_manager.set_state(JarvisState.IDLE)
+
+            return
+
+        # ==========================================
+        # FOLLOW-UP COMMAND
+        # ==========================================
+
+        print("JARVIS: Executing after Chrome: " f"{remaining_command}")
+
+        cleaned_command = normalize(remaining_command)
+
+        # ==========================================
+        # PLAY MEDIA
+        # ==========================================
+
+        if (
+            cleaned_command.startswith("play ")
+            or cleaned_command.startswith("listen ")
+            or cleaned_command.startswith("put ")
+        ):
+
+            media_command = self.clean_media_command(cleaned_command)
+
+            if media_command.startswith("play "):
+
+                media_target = media_command[len("play ") :].strip()
+
+            elif media_command.startswith("listen "):
+
+                media_target = media_command[len("listen ") :].strip()
+
+            elif media_command.startswith("put "):
+
+                media_target = media_command[len("put ") :].strip()
+
+            else:
+
+                media_target = media_command
+
+            result = {
+                "intent": "PLAY_MEDIA",
+                "target": media_target,
+                "profile_directory": profile_directory,
+            }
+
+            self.execute_directed_result(result)
+
+            return
+
+        # ==========================================
+        # WEB SEARCH
+        # ==========================================
+
+        if (
+            cleaned_command.startswith("search ")
+            or cleaned_command.startswith("google ")
+            or cleaned_command.startswith("browse ")
+            or cleaned_command.startswith("lookup ")
+        ):
+
+            words = cleaned_command.split(maxsplit=1)
+
+            if len(words) == 2:
+
+                search_target = words[1].strip()
+
+            else:
+
+                search_target = ""
+
+            result = {
+                "intent": "WEB_SEARCH",
+                "target": search_target,
+                "profile_directory": profile_directory,
+            }
+
+            self.execute_directed_result(result)
+
+            return
+
+        # ==========================================
+        # FALLBACK PROCESSING
+        # ==========================================
+
+        results = self.process_command(remaining_command)
+
+        for result in results:
+
+            result["profile_directory"] = profile_directory
+
+            self.execute_directed_result(result)
+
+        self.state_manager.set_state(JarvisState.IDLE)
+
+    # ==================================================
+    # EXECUTE DIRECTED RESULT
+    # ==================================================
+
+    def execute_directed_result(
+        self,
+        result,
+    ):
+        """
+        Executes a command that was explicitly
+        directed to a Chrome profile.
+        """
+
+        self.state_manager.set_state(JarvisState.SPEAKING)
+
+        acknowledgement = get_acknowledgement(result)
+
+        print(acknowledgement)
+
+        speak(acknowledgement)
+
+        self.state_manager.set_state(JarvisState.EXECUTING)
+
+        # ==========================================
+        # WEB SEARCH IN SELECTED PROFILE
+        # ==========================================
+
+        if result["intent"] == "WEB_SEARCH":
+
+            target = result.get(
+                "target",
+                "",
+            )
+
+            profile_directory = result.get("profile_directory")
+
+            # Selenium/YouTube is handled
+            # by PLAY_MEDIA.
+
+            # For now, open Google using
+            # the selected profile through
+            # the normal Chrome command.
+            #
+            # The actual Selenium-based
+            # profile web automation will be
+            # expanded after media is stable.
+
+            if target:
+
+                search_url = "https://www.google.com/search?q=" + quote(target)
+
+                webbrowser.open(search_url)
+
+                response = f"Searching for {target}."
+
+            else:
+
+                response = "What would you like " "me to search for?"
+
+        else:
+
+            response = execute(result)
+
+        print(response)
+
+        self.bridge.send_response(response)
+
+        self.context.remember(
+            intent=result["intent"],
+            target=result["target"],
+            response=response,
+        )
 
     # ==================================================
     # REQUEST CHROME PROFILE
@@ -229,12 +668,11 @@ class Assistant(QObject):
         """
 
         if not response:
-
             return
 
         response = normalize(response)
 
-        print(f"JARVIS: Profile selection: {response}")
+        print("JARVIS: Profile selection: " f"{response}")
 
         profiles = list(self.chrome_profiles.items())
 
@@ -289,7 +727,10 @@ class Assistant(QObject):
 
             response_lower = response.lower()
 
-            for profile_directory, profile_data in profiles:
+            for (
+                profile_directory,
+                profile_data,
+            ) in profiles:
 
                 name = profile_data.get(
                     "name",
@@ -451,7 +892,6 @@ class Assistant(QObject):
         command = normalize(command)
 
         if not command:
-
             return []
 
         commands = command.replace(
@@ -466,7 +906,6 @@ class Assistant(QObject):
             words = current_command.split()
 
             if not words:
-
                 continue
 
             # -------------------------
