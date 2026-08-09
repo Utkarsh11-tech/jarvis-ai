@@ -146,7 +146,11 @@ class Assistant:
 
             self.state_manager.set_state(JarvisState.EXECUTING)
 
-            response = execute(result)
+            response = execute(result) 
+            print(response)
+            self.bridge.send_response( 
+                response
+            )
 
             print(response)
 
