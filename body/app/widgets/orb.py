@@ -472,15 +472,19 @@ class OrbWidget(QWidget):
         )
 
         # ==================================================
-        # CORE OUTER GLOW
+        # ARC REACTOR CORE
         # ==================================================
 
         core_radius = radius * 0.31
 
+        # ==================================================
+        # CORE GLOW
+        # ==================================================
+
         core_glow = QRadialGradient(
             center_x,
             center_y,
-            core_radius * 1.5
+            core_radius * 1.65
         )
 
         core_glow.setColorAt(
@@ -489,27 +493,37 @@ class OrbWidget(QWidget):
                 255,
                 255,
                 255,
-                220
+                240
             )
         )
 
         core_glow.setColorAt(
-            0.25,
+            0.18,
             QColor(
-                0,
-                217,
+                120,
+                245,
                 255,
-                180
+                230
             )
         )
 
         core_glow.setColorAt(
-            0.65,
+            0.45,
             QColor(
                 0,
                 217,
                 255,
-                45
+                150
+            )
+        )
+
+        core_glow.setColorAt(
+            0.75,
+            QColor(
+                0,
+                120,
+                180,
+                55
             )
         )
 
@@ -526,84 +540,155 @@ class OrbWidget(QWidget):
         painter.setBrush(core_glow)
 
         painter.drawEllipse(
-            int(
-                center_x
-                - core_radius * 1.5
-            ),
-            int(
-                center_y
-                - core_radius * 1.5
-            ),
-            int(core_radius * 3),
-            int(core_radius * 3)
+            int(center_x - core_radius * 1.65),
+            int(center_y - core_radius * 1.65),
+            int(core_radius * 3.3),
+            int(core_radius * 3.3)
         )
 
         # ==================================================
-        # CORE
+        # DARK REACTOR HOUSING
         # ==================================================
 
-        core = QRadialGradient(
+        housing_radius = core_radius * 0.98
+
+        housing = QRadialGradient(
             center_x,
             center_y,
-            core_radius
+            housing_radius
         )
 
-        core.setColorAt(
+        housing.setColorAt(
             0.0,
             QColor(
-                255,
-                255,
-                255,
+                20,
+                65,
+                80,
                 255
             )
         )
 
-        core.setColorAt(
-            0.25,
+        housing.setColorAt(
+            0.55,
             QColor(
-                0,
-                230,
-                255,
+                8,
+                25,
+                35,
                 255
             )
         )
 
-        core.setColorAt(
-            0.75,
-            QColor(
-                0,
-                100,
-                150,
-                255
-            )
-        )
-
-        core.setColorAt(
+        housing.setColorAt(
             1.0,
             QColor(
-                0,
-                30,
-                50,
+                2,
+                8,
+                14,
                 255
             )
         )
 
-        painter.setBrush(core)
+        painter.setBrush(housing)
+
+        painter.setPen(
+            QPen(
+                QColor(
+                    0,
+                    217,
+                    255,
+                    180
+                ),
+                2
+            )
+        )
 
         painter.drawEllipse(
-            int(
-                center_x - core_radius
-            ),
-            int(
-                center_y - core_radius
-            ),
-            int(core_radius * 2),
-            int(core_radius * 2)
+            int(center_x - housing_radius),
+            int(center_y - housing_radius),
+            int(housing_radius * 2),
+            int(housing_radius * 2)
         )
 
         # ==================================================
-        # CORE HEXAGON TEXTURE
+        # ARC REACTOR OUTER RING
         # ==================================================
+
+        self.draw_circle(
+            painter,
+            center,
+            core_radius * 0.86,
+            QColor(
+                170,
+                240,
+                255,
+                220
+            ),
+            3
+        )
+
+        self.draw_circle(
+            painter,
+            center,
+            core_radius * 0.72,
+            QColor(
+                0,
+                217,
+                255,
+                180
+            ),
+            2
+        )
+
+        # ==================================================
+        # REACTOR SEGMENTS
+        # ==================================================
+
+        reactor_radius = core_radius * 0.78
+
+        for i in range(12):
+
+            start_angle = (
+                self.rotation * 0.35
+                + i * 30
+            )
+
+            if i % 2 == 0:
+
+                color = QColor(
+                    210,
+                    250,
+                    255,
+                    235
+                )
+
+                width = 5
+
+            else:
+
+                color = QColor(
+                    0,
+                    160,
+                    210,
+                    120
+                )
+
+                width = 3
+
+            self.draw_arc(
+                painter,
+                center,
+                reactor_radius,
+                start_angle,
+                17,
+                width,
+                color
+            )
+
+        # ==================================================
+        # ARC REACTOR THREE-SPOKE STRUCTURE
+        # ==================================================
+
+        spoke_radius = core_radius * 0.62
 
         painter.setBrush(
             Qt.BrushStyle.NoBrush
@@ -612,46 +697,85 @@ class OrbWidget(QWidget):
         painter.setPen(
             QPen(
                 QColor(
-                    0,
-                    217,
+                    210,
+                    250,
                     255,
-                    90
+                    220
                 ),
-                1
+                4
             )
         )
 
-        hex_radius = core_radius * 0.72
+        for i in range(3):
 
-        for ring in range(1, 4):
-            current_radius = (
-                hex_radius
-                * ring
-                / 3
+            angle = math.radians(
+                self.rotation * 0.15
+                + i * 120
             )
 
-            self.draw_hex_ring(
-                painter,
-                center_x,
-                center_y,
-                current_radius
+            inner_x = (
+                center_x
+                + math.cos(angle)
+                * core_radius
+                * 0.18
+            )
+
+            inner_y = (
+                center_y
+                + math.sin(angle)
+                * core_radius
+                * 0.18
+            )
+
+            outer_x = (
+                center_x
+                + math.cos(angle)
+                * spoke_radius
+            )
+
+            outer_y = (
+                center_y
+                + math.sin(angle)
+                * spoke_radius
+            )
+
+            painter.drawLine(
+                int(inner_x),
+                int(inner_y),
+                int(outer_x),
+                int(outer_y)
             )
 
         # ==================================================
-        # CENTER POINT
+        # INNER REACTOR RING
         # ==================================================
 
-        painter.setPen(
-            Qt.PenStyle.NoPen
+        inner_radius = core_radius * 0.46
+
+        self.draw_circle(
+            painter,
+            center,
+            inner_radius,
+            QColor(
+                220,
+                250,
+                255,
+                230
+            ),
+            3
         )
 
-        center_glow = QRadialGradient(
+        # ==================================================
+        # REACTOR CORE GLOW
+        # ==================================================
+
+        reactor_core = QRadialGradient(
             center_x,
             center_y,
-            core_radius * 0.35
+            inner_radius
         )
 
-        center_glow.setColorAt(
+        reactor_core.setColorAt(
             0.0,
             QColor(
                 255,
@@ -661,17 +785,94 @@ class OrbWidget(QWidget):
             )
         )
 
-        center_glow.setColorAt(
-            0.5,
+        reactor_core.setColorAt(
+            0.20,
             QColor(
-                0,
-                240,
+                180,
+                250,
                 255,
-                240
+                255
             )
         )
 
-        center_glow.setColorAt(
+        reactor_core.setColorAt(
+            0.55,
+            QColor(
+                0,
+                230,
+                255,
+                255
+            )
+        )
+
+        reactor_core.setColorAt(
+            1.0,
+            QColor(
+                0,
+                80,
+                130,
+                255
+            )
+        )
+
+        painter.setBrush(
+            reactor_core
+        )
+
+        painter.setPen(
+            Qt.PenStyle.NoPen
+        )
+
+        painter.drawEllipse(
+            int(center_x - inner_radius),
+            int(center_y - inner_radius),
+            int(inner_radius * 2),
+            int(inner_radius * 2)
+        )
+
+        # ==================================================
+        # CENTRAL ARC REACTOR
+        # ==================================================
+
+        central_radius = core_radius * 0.23
+
+        central_glow = QRadialGradient(
+            center_x,
+            center_y,
+            central_radius * 2
+        )
+
+        central_glow.setColorAt(
+            0.0,
+            QColor(
+                255,
+                255,
+                255,
+                255
+            )
+        )
+
+        central_glow.setColorAt(
+            0.30,
+            QColor(
+                0,
+                245,
+                255,
+                255
+            )
+        )
+
+        central_glow.setColorAt(
+            0.65,
+            QColor(
+                0,
+                180,
+                230,
+                150
+            )
+        )
+
+        central_glow.setColorAt(
             1.0,
             QColor(
                 0,
@@ -681,21 +882,55 @@ class OrbWidget(QWidget):
             )
         )
 
-        painter.setBrush(center_glow)
-
-        center_point = (
-            core_radius * 0.22
+        painter.setBrush(
+            central_glow
         )
 
         painter.drawEllipse(
             int(
-                center_x - center_point
+                center_x
+                - central_radius * 2
             ),
             int(
-                center_y - center_point
+                center_y
+                - central_radius * 2
             ),
-            int(center_point * 2),
-            int(center_point * 2)
+            int(
+                central_radius * 4
+            ),
+            int(
+                central_radius * 4
+            )
+        )
+
+        # ==================================================
+        # CENTRAL LIGHT
+        # ==================================================
+
+        painter.setBrush(
+            QColor(
+                235,
+                255,
+                255,
+                255
+            )
+        )
+
+        painter.drawEllipse(
+            int(
+                center_x
+                - central_radius * 0.32
+            ),
+            int(
+                center_y
+                - central_radius * 0.32
+            ),
+            int(
+                central_radius * 0.64
+            ),
+            int(
+                central_radius * 0.64
+            )
         )
 
     # ======================================================

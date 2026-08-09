@@ -23,14 +23,48 @@ class MainWindow(QMainWindow):
     def __init__(self, bridge):
         super().__init__()
 
+        # ==========================================
+        # WINDOW
+        # ==========================================
+
         self.setWindowTitle("JARVIS")
         self.resize(1000, 650)
+
+        # ==========================================
+        # JARVIS THEME
+        # ==========================================
+
+        self.setStyleSheet(
+            """
+            QMainWindow {
+                background-color: #050A12;
+            }
+
+            QWidget {
+                background-color: #050A12;
+                color: #DDE7F2;
+            }
+
+            QLabel {
+                background: transparent;
+                color: #DDE7F2;
+            }
+            """
+        )
 
         # ==========================================
         # CENTRAL WIDGET
         # ==========================================
 
         self.central_widget = QWidget()
+
+        self.central_widget.setStyleSheet(
+            """
+            QWidget {
+                background-color: #050A12;
+            }
+            """
+        )
 
         self.setCentralWidget(
             self.central_widget
@@ -42,6 +76,17 @@ class MainWindow(QMainWindow):
 
         self.main_layout = QVBoxLayout()
 
+        self.main_layout.setContentsMargins(
+            28,
+            20,
+            28,
+            18,
+        )
+
+        self.main_layout.setSpacing(
+            10
+        )
+
         self.central_widget.setLayout(
             self.main_layout
         )
@@ -51,11 +96,24 @@ class MainWindow(QMainWindow):
         # ==========================================
 
         self.header = QLabel(
-            "JARVIS"
+            "J.A.R.V.I.S"
         )
 
         self.header.setAlignment(
             Qt.AlignmentFlag.AlignCenter
+        )
+
+        self.header.setStyleSheet(
+            """
+            QLabel {
+                background: transparent;
+                color: #DDEFFF;
+                font-family: "Orbitron", "Eurostile", "Arial";
+                font-size: 27px;
+                font-weight: 700;
+                letter-spacing: 8px;
+            }
+            """
         )
 
         # ==========================================
@@ -120,6 +178,17 @@ class MainWindow(QMainWindow):
             Qt.AlignmentFlag.AlignCenter
         )
 
+        self.status.setStyleSheet(
+            """
+            QLabel {
+                background: transparent;
+                color: #6F91B5;
+                font-size: 13px;
+                letter-spacing: 1px;
+            }
+            """
+        )
+
         # ==========================================
         # CHAT
         # ==========================================
@@ -141,11 +210,23 @@ class MainWindow(QMainWindow):
         # ==========================================
 
         self.footer = QLabel(
-            "Version 0.1      |      Offline"
+            "J.A.R.V.I.S  •  SYSTEM ONLINE"
         )
 
         self.footer.setAlignment(
             Qt.AlignmentFlag.AlignCenter
+        )
+
+        self.footer.setStyleSheet(
+            """
+            QLabel {
+                background: transparent;
+                color: #425B75;
+                font-family: "Orbitron", "Eurostile", "Arial";
+                font-size: 11px;
+                letter-spacing: 4px;
+            }
+            """
         )
 
         # ==========================================
