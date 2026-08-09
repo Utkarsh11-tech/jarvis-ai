@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from brain.media.youtube_player import play_youtube
+from brain.media.chrome_controller import play_youtube_music
 
 # ==========================================
 # APPLICATIONS
@@ -67,7 +68,8 @@ def get_chrome_profiles():
 
 def open_chrome(profile_directory):
     """
-    Opens Chrome using the selected profile directory.
+    Opens Chrome using the selected profile
+    directory.
     """
 
     if not profile_directory:
@@ -173,7 +175,6 @@ def get_available_drives():
 
     drives = []
 
-    # Search non-system drives first.
     for drive_letter in "DEFGHIJKLMNOPQRSTUVWXYZ":
 
         drive = f"{drive_letter}:\\"
@@ -182,7 +183,6 @@ def get_available_drives():
 
             drives.append(drive)
 
-    # Search C: only as a last resort.
     if os.path.exists("C:\\"):
 
         drives.append("C:\\")
@@ -268,8 +268,6 @@ def find_filesystem_matches(target):
                         )
                     )
 
-        # Stop searching after finding a result
-        # on a non-C drive.
         if (file_matches or folder_matches) and drive != "C:\\":
 
             break
@@ -365,15 +363,78 @@ def play_media(
     profile_directory=None,
 ):
     """
-    Plays the requested media on YouTube.
+    Plays requested media.
 
-    If a Chrome profile is supplied,
-    that profile is used for playback.
+    Normal media uses YouTube.
+
+    If the target explicitly mentions
+    YouTube Music, the real Chrome profile
+    is used with the YouTube Music controller.
     """
 
     if not target:
 
         return "What would you like me to play?"
+
+    target_lower = target.lower().strip()
+
+    # ======================================
+    # YOUTUBE MUSIC DETECTION
+    # ======================================
+
+    youtube_music_phrases = (
+        "in youtube music",
+        "on youtube music",
+        "using youtube music",
+        "through youtube music",
+    )
+
+    youtube_music = any(phrase in target_lower for phrase in youtube_music_phrases)
+
+    if youtube_music:
+
+        query = target
+
+        for phrase in youtube_music_phrases:
+
+            query = query.lower().replace(
+                phrase,
+                "",
+            )
+
+        query = query.strip()
+
+        # Remove common leading words.
+        for prefix in (
+            "play ",
+            "listen to ",
+            "put ",
+        ):
+
+            if query.startswith(prefix):
+
+                query = query[len(prefix) :].strip()
+
+        if not query:
+
+            return "What would you like me " "to play on YouTube Music?"
+
+        print("JARVIS: Playing on YouTube Music: " f"{query}")
+
+        success = play_youtube_music(
+            query,
+            profile_directory,
+        )
+
+        if success:
+
+            return f"Playing {query} " "on YouTube Music."
+
+        return f"I couldn't play {query} " "on YouTube Music."
+
+    # ======================================
+    # NORMAL YOUTUBE
+    # ======================================
 
     success = play_youtube(
         target,
@@ -427,7 +488,7 @@ def run_ui_automation_test():
 
     except Exception as error:
 
-        print(f"JARVIS UI Automation Error: {error}")
+        print("JARVIS UI Automation Error: " f"{error}")
 
         return "I couldn't complete the " "UI automation test."
 
@@ -474,7 +535,13 @@ def get_acknowledgement(command):
 
         if not target:
 
-            return "What would you like me to play?"
+            return "What would you like " "me to play?"
+
+        target_lower = target.lower()
+
+        if "youtube music" in target_lower:
+
+            return "Playing on YouTube Music."
 
         return f"Playing {target}."
 
@@ -548,8 +615,6 @@ def execute(command):
 
     if intent == "OPEN_APPLICATION":
 
-        # Chrome requires profile selection
-        # through the Assistant.
         if target == "chrome":
 
             return "Chrome profile selection " "required."
@@ -566,10 +631,7 @@ def execute(command):
 
             except OSError:
 
-                return f"I couldn't open {target}."
-
-        # If it isn't an application,
-        # search for a matching file or folder.
+                return f"I couldn't open " f"{target}."
 
         file_matches, folder_matches = find_filesystem_matches(target)
 
