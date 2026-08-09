@@ -1,9 +1,12 @@
 from brain.core.normalizer import normalize
 from brain.core.intent_detector import detect_intent
 from brain.core.target_extractor import extract_target
+
 from brain.core.executor import (
     execute,
     get_acknowledgement,
+    get_chrome_profiles,
+    open_chrome,
 )
 
 from bridge.bridge import JarvisBridge
@@ -30,6 +33,12 @@ class Assistant(QObject):
 
         self.bridge.command_requested.connect(self.handle_command)
 
+        self.bridge.profile_selected.connect(self.handle_profile_selected)
+
+    # ==================================================
+    # BRAIN STARTUP
+    # ==================================================
+
     def run(self):
         """
         Starts the Brain worker.
@@ -39,6 +48,10 @@ class Assistant(QObject):
 
         print("JARVIS Brain is ready.")
 
+    # ==================================================
+    # HANDLE COMMAND
+    # ==================================================
+
     def handle_command(self, command):
         """
         Handles commands received from the Body.
@@ -47,6 +60,11 @@ class Assistant(QObject):
         self.state_manager.set_state(JarvisState.THINKING)
 
         results = self.process_command(command)
+
+        if not results:
+            self.state_manager.set_state(JarvisState.IDLE)
+
+            return
 
         for result in results:
 
@@ -61,6 +79,16 @@ class Assistant(QObject):
             print(acknowledgement)
 
             speak(acknowledgement)
+
+            # -------------------------
+            # CHROME
+            # -------------------------
+
+            if result["intent"] == "OPEN_APPLICATION" and result["target"] == "chrome":
+
+                self.request_chrome_profile()
+
+                return
 
             # -------------------------
             # EXECUTING
@@ -80,12 +108,71 @@ class Assistant(QObject):
 
         self.state_manager.set_state(JarvisState.IDLE)
 
+    # ==================================================
+    # REQUEST CHROME PROFILE
+    # ==================================================
+
+    def request_chrome_profile(self):
+        """
+        Requests Chrome profile selection
+        from the GUI.
+        """
+
+        profiles = get_chrome_profiles()
+
+        if not profiles:
+
+            response = "No Chrome profiles were found."
+
+            print(response)
+
+            self.bridge.send_response(response)
+
+            self.state_manager.set_state(JarvisState.IDLE)
+
+            return
+
+        self.state_manager.set_state(JarvisState.EXECUTING)
+
+        self.bridge.request_profile_selection(list(profiles.items()))
+
+    # ==================================================
+    # HANDLE CHROME PROFILE SELECTION
+    # ==================================================
+
+    def handle_profile_selected(
+        self,
+        profile_directory,
+    ):
+        """
+        Handles the Chrome profile selected
+        by the user in the GUI.
+        """
+
+        self.state_manager.set_state(JarvisState.EXECUTING)
+
+        response = open_chrome(profile_directory)
+
+        print(response)
+
+        self.bridge.send_response(response)
+
+        self.state_manager.set_state(JarvisState.IDLE)
+
+    # ==================================================
+    # INITIALIZE
+    # ==================================================
+
     def initialize(self):
         """
         Initializes all required modules.
         """
 
         print("Initializing all required modules.....")
+
+    # ==================================================
+    # PROCESS COMMAND
+    # ==================================================
 
     def process_command(self, command):
         """
