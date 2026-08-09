@@ -9,48 +9,83 @@ from PySide6.QtWidgets import (
 
 from body.app.widgets.orb import OrbWidget, OrbState
 from body.app.widgets.microphone import Microphone
-from bridge.bridge import JarvisBridge
 from body.app.widgets.conversation import ConversationWidget
 from body.app.widgets.chat_input import ChatInput
+from body.app.widgets.chrome_profile_selector import (
+    ChromeProfileSelector,
+)
+
+from bridge.bridge import JarvisBridge
 
 
 class MainWindow(QMainWindow):
+
     def __init__(self, bridge):
         super().__init__()
 
         self.setWindowTitle("JARVIS")
         self.resize(1000, 650)
 
-        # Central Widget
+        # ==========================================
+        # CENTRAL WIDGET
+        # ==========================================
+
         self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
 
-        # Main Layout
+        self.setCentralWidget(
+            self.central_widget
+        )
+
+        # ==========================================
+        # MAIN LAYOUT
+        # ==========================================
+
         self.main_layout = QVBoxLayout()
-        self.central_widget.setLayout(self.main_layout)
 
-        # ---------- Header ----------
-        self.header = QLabel("JARVIS")
+        self.central_widget.setLayout(
+            self.main_layout
+        )
+
+        # ==========================================
+        # HEADER
+        # ==========================================
+
+        self.header = QLabel(
+            "JARVIS"
+        )
+
         self.header.setAlignment(
             Qt.AlignmentFlag.AlignCenter
         )
 
-        # ---------- Orb ----------
+        # ==========================================
+        # ORB
+        # ==========================================
+
         self.orb = OrbWidget()
 
-        # ---------- Microphone ----------
+        # ==========================================
+        # MICROPHONE
+        # ==========================================
+
         self.microphone = Microphone()
 
         self.microphone.level_changed.connect(
             self.orb.set_audio_level
         )
 
-        # ---------- Orb Click ----------
+        # ==========================================
+        # ORB CLICK
+        # ==========================================
+
         self.orb.clicked.connect(
             self.toggle_listening
         )
 
-        # ---------- Bridge ----------
+        # ==========================================
+        # BRIDGE
+        # ==========================================
+
         self.bridge = bridge
 
         self.bridge.state_changed.connect(
@@ -61,38 +96,62 @@ class MainWindow(QMainWindow):
             self.handle_jarvis_response
         )
 
-        # Initial state
+        self.bridge.profile_selection_requested.connect(
+            self.handle_profile_selection
+        )
+
+        # ==========================================
+        # INITIAL STATE
+        # ==========================================
+
         self.orb.set_state(
             OrbState.IDLE
         )
 
-        # ---------- Status ----------
+        # ==========================================
+        # STATUS
+        # ==========================================
+
         self.status = QLabel(
             "Status : Waiting for command..."
         )
+
         self.status.setAlignment(
             Qt.AlignmentFlag.AlignCenter
         )
 
-        # ---------- Chat ----------
+        # ==========================================
+        # CHAT
+        # ==========================================
+
         self.chat = ConversationWidget()
 
-        # ---------- Chat Input ----------
+        # ==========================================
+        # CHAT INPUT
+        # ==========================================
+
         self.chat_input = ChatInput()
 
         self.chat_input.message_sent.connect(
             self.handle_text_message
         )
 
-        # ---------- Footer ----------
+        # ==========================================
+        # FOOTER
+        # ==========================================
+
         self.footer = QLabel(
             "Version 0.1      |      Offline"
         )
+
         self.footer.setAlignment(
             Qt.AlignmentFlag.AlignCenter
         )
 
-        # ---------- Add Widgets ----------
+        # ==========================================
+        # ADD WIDGETS
+        # ==========================================
+
         self.main_layout.addWidget(
             self.header,
             1
@@ -122,11 +181,18 @@ class MainWindow(QMainWindow):
             1
         )
 
+        # ==========================================
+        # PROFILE SELECTOR
+        # ==========================================
+
+        self.profile_selector = None
+
     # ==================================================
     # HANDLE TEXT MESSAGE
     # ==================================================
 
     def handle_text_message(self, message):
+
         self.chat.add_user_message(
             message
         )
@@ -136,11 +202,53 @@ class MainWindow(QMainWindow):
         )
 
     # ==================================================
+    # HANDLE PROFILE SELECTION REQUEST
+    # ==================================================
+
+    def handle_profile_selection(self, profiles):
+        """
+        Displays the Chrome profile selector
+        when the Brain requests one.
+        """
+
+        self.profile_selector = (
+            ChromeProfileSelector(
+                profiles,
+                self
+            )
+        )
+
+        self.profile_selector.profile_selected.connect(
+            self.handle_profile_selected
+        )
+
+        self.profile_selector.exec()
+
+    # ==================================================
+    # HANDLE SELECTED PROFILE
+    # ==================================================
+
+    def handle_profile_selected(
+        self,
+        profile_directory
+    ):
+        """
+        Sends the selected Chrome profile
+        back to the Brain.
+        """
+
+        self.bridge.send_profile_selection(
+            profile_directory
+        )
+
+    # ==================================================
     # TOGGLE LISTENING
     # ==================================================
 
     def toggle_listening(self):
+
         if self.orb.state == OrbState.IDLE:
+
             self.orb.set_state(
                 OrbState.LISTENING
             )
@@ -152,6 +260,7 @@ class MainWindow(QMainWindow):
             self.microphone.start()
 
         elif self.orb.state == OrbState.LISTENING:
+
             self.microphone.stop()
 
             self.orb.set_state(
@@ -167,7 +276,9 @@ class MainWindow(QMainWindow):
     # ==================================================
 
     def handle_state_change(self, state):
+
         try:
+
             orb_state = OrbState(
                 state.lower()
             )
@@ -181,14 +292,17 @@ class MainWindow(QMainWindow):
             )
 
         except ValueError:
+
             self.status.setText(
                 f"Status : Unknown state ({state})"
             )
+
     # ==================================================
     # HANDLE JARVIS RESPONSE
     # ==================================================
 
     def handle_jarvis_response(self, response):
+
         self.chat.add_jarvis_message(
             response
         )
