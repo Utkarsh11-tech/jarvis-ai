@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -16,7 +16,10 @@ class ChatInput(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # ---------- Input ----------
+        # ==========================================
+        # INPUT
+        # ==========================================
+
         self.input = QLineEdit()
 
         self.input.setPlaceholderText(
@@ -24,7 +27,7 @@ class ChatInput(QWidget):
         )
 
         self.input.setFixedHeight(
-            42
+            48
         )
 
         # Pressing Enter sends the message
@@ -32,21 +35,27 @@ class ChatInput(QWidget):
             self.send_message
         )
 
-        # ---------- Send Button ----------
+        # ==========================================
+        # ARROW BUTTON
+        # ==========================================
+
         self.send_button = QPushButton(
             "➤"
         )
 
         self.send_button.setFixedSize(
-            50,
-            42
+            58,
+            48
         )
 
         self.send_button.clicked.connect(
             self.send_message
         )
 
-        # ---------- Layout ----------
+        # ==========================================
+        # LAYOUT
+        # ==========================================
+
         self.input_layout = QHBoxLayout()
 
         self.input_layout.setContentsMargins(
@@ -57,7 +66,7 @@ class ChatInput(QWidget):
         )
 
         self.input_layout.setSpacing(
-            8
+            10
         )
 
         self.setLayout(
@@ -72,16 +81,33 @@ class ChatInput(QWidget):
             self.send_button
         )
 
-        # ---------- Styling ----------
+        # ==========================================
+        # HUD STYLE
+        # ==========================================
+
         self.setStyleSheet(
             """
             QLineEdit {
-                background-color: #15151C;
-                color: #F2F2F2;
-                border: 1px solid #252530;
+                background-color: #030A12;
+                color: #DDEFFF;
+
+                border: 1px solid #126486;
                 border-radius: 12px;
-                padding: 10px 14px;
-                font-size: 14px;
+
+                padding-left: 18px;
+                padding-right: 18px;
+
+                font-family:
+                    "Orbitron",
+                    "Eurostile",
+                    "Arial";
+
+                font-size: 13px;
+                letter-spacing: 1px;
+            }
+
+            QLineEdit:hover {
+                border: 1px solid #1788B5;
             }
 
             QLineEdit:focus {
@@ -89,21 +115,31 @@ class ChatInput(QWidget):
             }
 
             QPushButton {
-                background-color: #15151C;
+                background-color: #030A12;
+
                 color: #00D9FF;
-                border: 1px solid #252530;
+
+                border: 1px solid #126486;
                 border-radius: 12px;
-                font-size: 18px;
+
+                font-size: 23px;
                 font-weight: bold;
             }
 
             QPushButton:hover {
-                background-color: #1C1C25;
+                background-color: #061522;
+
+                color: #6FEAFF;
+
                 border: 1px solid #00D9FF;
             }
 
             QPushButton:pressed {
-                background-color: #252530;
+                background-color: #0A2638;
+
+                color: #FFFFFF;
+
+                border: 1px solid #00D9FF;
             }
             """
         )
@@ -120,7 +156,7 @@ class ChatInput(QWidget):
         if not message:
             return
 
-        # Send message through signal
+        # Send through signal
         self.message_sent.emit(
             message
         )
