@@ -180,14 +180,6 @@ class MainWindow(QMainWindow):
                 f"Status : {state.title()}"
             )
 
-            # Start microphone only while listening
-            if orb_state == OrbState.LISTENING:
-                self.microphone.start()
-
-            # Stop microphone for every other state
-            else:
-                self.microphone.stop()
-
         except ValueError:
             self.status.setText(
                 f"Status : Unknown state ({state})"
