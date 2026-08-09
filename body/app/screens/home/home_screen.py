@@ -247,7 +247,10 @@ class MainWindow(QMainWindow):
 
     def toggle_listening(self):
 
-        if self.orb.state == OrbState.IDLE:
+        if self.orb.state in (
+            OrbState.IDLE,
+            OrbState.SLEEPING,
+        ):
 
             self.orb.set_state(
                 OrbState.LISTENING
@@ -290,6 +293,14 @@ class MainWindow(QMainWindow):
             self.status.setText(
                 f"Status : {state.title()}"
             )
+
+            if orb_state == OrbState.LISTENING:
+
+                self.microphone.start()
+
+            else:
+
+                self.microphone.stop()
 
         except ValueError:
 

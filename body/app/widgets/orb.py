@@ -123,6 +123,21 @@ class OrbWidget(QWidget):
         self.target_audio_level = level
 
     # ======================================================
+    # MOUSE CLICK
+    # ======================================================
+
+    def mousePressEvent(self, event):
+        """
+        Emits the clicked signal when the orb is clicked.
+        """
+
+        if event.button() == Qt.MouseButton.LeftButton:
+
+            self.clicked.emit()
+
+        super().mousePressEvent(event)
+
+    # ======================================================
     # PAINT EVENT
     # ======================================================
 
@@ -797,13 +812,3 @@ class OrbWidget(QWidget):
                 end[0],
                 end[1]
             )
-            
-    # ======================================================
-    # ORB CLICK
-    # ======================================================
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit()
-
-        super().mousePressEvent(event)
