@@ -54,4 +54,4 @@ class VoiceWorker(QObject):
         self.running = False
 
         if self.listener:
-            self.listener.close()
+            self.listener.stop()
