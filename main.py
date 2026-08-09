@@ -45,7 +45,8 @@ def main():
 
     assistant.moveToThread(brain_thread)
 
-    brain_thread.started.connect(assistant.start)
+    # Brain is ready.
+    # Voice loop will be integrated separately.
 
     brain_thread.start()
 
