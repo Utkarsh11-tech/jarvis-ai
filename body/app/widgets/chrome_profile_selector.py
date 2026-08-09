@@ -25,11 +25,14 @@ class ChromeProfileSelector(QDialog):
         self.resize(400, 300)
 
         # ==========================================
-        # LAYOUT
+        # MAIN LAYOUT
         # ==========================================
 
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
+        self.main_layout = QVBoxLayout()
+
+        self.setLayout(
+            self.main_layout
+        )
 
         # ==========================================
         # TITLE
@@ -39,7 +42,7 @@ class ChromeProfileSelector(QDialog):
             "Choose a Chrome profile"
         )
 
-        self.layout.addWidget(
+        self.main_layout.addWidget(
             self.title
         )
 
@@ -64,7 +67,7 @@ class ChromeProfileSelector(QDialog):
                 self.select_profile(directory)
             )
 
-            self.layout.addWidget(
+            self.main_layout.addWidget(
                 button
             )
 
