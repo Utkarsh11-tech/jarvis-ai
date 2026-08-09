@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
 
 from body.app.widgets.orb import OrbWidget, OrbState
 from body.app.widgets.microphone import Microphone
-from body.app.backend.bridge import JarvisBridge
+from bridge.bridge import JarvisBridge
 from body.app.widgets.conversation import ConversationWidget
 from body.app.widgets.chat_input import ChatInput
 
