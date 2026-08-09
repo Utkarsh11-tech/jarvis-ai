@@ -1,211 +1,133 @@
-import time
+import threading
 
-import pyaudio
-import numpy as np
-import openwakeword
+from PySide6.QtCore import QObject, Signal
 
-from openwakeword.model import Model
-import speech_recognition as sr
+from brain.voices.listener import VoiceListener
+from bridge.bridge import JarvisBridge
 
-WAKE_WORD = "hey_jarvis"
-WAKE_THRESHOLD = 0.5
-
-SAMPLE_RATE = 16000
-CHUNK_SIZE = 1280
+from brain.core.state import JarvisState
 
 
-class VoiceListener:
+class VoiceWorker(QObject):
 
-    def __init__(self):
-        """
-        Initializes the wake-word detector and
-        speech recognition system.
-        """
+    command_received = Signal(str)
+    finished = Signal()
 
-        self.recognizer = sr.Recognizer()
+    def __init__(self, bridge):
+        super().__init__()
 
-        self.recognizer.energy_threshold = 300
-        self.recognizer.dynamic_energy_threshold = True
-        self.recognizer.pause_threshold = 0.8
-        self.recognizer.phrase_threshold = 0.3
-        self.recognizer.non_speaking_duration = 0.5
-
-        self.microphone = sr.Microphone()
-
-        self.audio = pyaudio.PyAudio()
-
-        openwakeword.utils.download_models(model_names=["hey_jarvis"])
-
-        self.wake_model = Model(wakeword_models=[WAKE_WORD], inference_framework="onnx")
-
-        self.wake_stream = None
-
-        # Controls the lifetime of the listener.
+        self.listener = None
         self.running = True
+        self.bridge = bridge
 
-        self._calibrate_microphone()
+        # Used when JARVIS needs a follow-up answer.
+        self.follow_up_requested = threading.Event()
 
-    def _calibrate_microphone(self):
+        self.bridge.voice_input_requested.connect(self.request_follow_up)
+
+    # ==================================================
+    # REQUEST FOLLOW-UP
+    # ==================================================
+
+    def request_follow_up(self):
         """
-        Calibrates the microphone once.
-        """
+        Requests one follow-up voice response.
 
-        print("JARVIS: Calibrating microphone...")
-
-        with self.microphone as source:
-
-            self.recognizer.adjust_for_ambient_noise(source, duration=1)
-
-        print("JARVIS: Microphone ready.")
-
-    def _start_wake_stream(self):
-        """
-        Starts the wake-word microphone stream.
-        """
-
-        if self.wake_stream is not None:
-            return
-
-        self.wake_stream = self.audio.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=SAMPLE_RATE,
-            input=True,
-            frames_per_buffer=CHUNK_SIZE,
-        )
-
-    def _stop_wake_stream(self):
-        """
-        Stops the wake-word microphone stream.
+        This only sets a thread-safe flag.
+        The actual microphone listening remains
+        inside the VoiceWorker thread.
         """
 
-        if self.wake_stream is None:
-            return
+        self.follow_up_requested.set()
 
-        self.wake_stream.stop_stream()
-        self.wake_stream.close()
+    # ==================================================
+    # MAIN VOICE LOOP
+    # ==================================================
 
-        self.wake_stream = None
-
-    def _reset_wake_model(self):
+    def run(self):
         """
-        Resets the wake-word detector after activation.
+        Starts the voice listening loop.
         """
 
-        self.wake_model.reset()
+        self.listener = VoiceListener()
 
-    def listen_for_wake_word(self):
-        """
-        Waits for the local JARVIS wake word.
-        """
-
-        self._start_wake_stream()
-
-        print("JARVIS: Waiting for wake word...")
-
-        while self.running:
-
-            audio_data = self.wake_stream.read(CHUNK_SIZE, exception_on_overflow=False)
-
-            audio_frame = np.frombuffer(audio_data, dtype=np.int16)
-
-            prediction = self.wake_model.predict(audio_frame)
-
-            score = prediction.get(WAKE_WORD, 0)
-
-            if score >= WAKE_THRESHOLD:
-
-                print(f"JARVIS: Wake word detected " f"(score: {score:.2f})")
-
-                # Stop listening for the wake word
-                # while JARVIS processes the command.
-                self._stop_wake_stream()
-
-                # Reset model state so old audio
-                # cannot trigger it again.
-                self._reset_wake_model()
-
-                return True
-
-        return False
-
-    def listen_for_command(self):
-        """
-        Listens for a command after activation.
-        """
-
-        if not self.running:
-            return ""
-
-        with self.microphone as source:
-
-            print("JARVIS: Listening...")
-
-            try:
-
-                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=8)
-
-            except sr.WaitTimeoutError:
-
-                print("JARVIS: I didn't hear a command.")
-
-                return ""
-
-        if not self.running:
-            return ""
+        print("JARVIS Voice Worker is ready.")
 
         try:
 
-            text = self.recognizer.recognize_google(audio)
+            while self.running:
 
-            text = text.lower().strip()
+                # ==================================
+                # FOLLOW-UP REQUEST
+                # ==================================
 
-            print(f"You said: {text}")
+                if self.follow_up_requested.is_set():
 
-            return text
+                    self.follow_up_requested.clear()
 
-        except sr.UnknownValueError:
+                    self.bridge.set_state(JarvisState.LISTENING.value)
 
-            print("JARVIS: I couldn't understand that.")
+                    print("JARVIS: Waiting for your response...")
 
-            return ""
+                    response = self.listener.listen_for_command()
 
-        except sr.RequestError:
+                    if response:
 
-            print("JARVIS: Speech recognition service " "is unavailable.")
+                        self.command_received.emit(response)
 
-            return ""
+                    continue
 
-    def prepare_for_wake_word(self):
-        """
-        Prepares the wake-word detector for a new cycle.
-        """
+                # ==================================
+                # SLEEPING
+                # ==================================
 
-        if not self.running:
-            return
+                self.bridge.set_state(JarvisState.SLEEPING.value)
 
-        self._reset_wake_model()
+                awakened = self.listener.listen_for_wake_word()
 
-        # Small cooldown prevents audio from the previous
-        # interaction from immediately triggering JARVIS.
-        time.sleep(0.5)
+                if not awakened:
+
+                    continue
+
+                # ==================================
+                # LISTENING
+                # ==================================
+
+                self.bridge.set_state(JarvisState.LISTENING.value)
+
+                command = self.listener.listen_for_command()
+
+                if command:
+
+                    self.command_received.emit(command)
+
+                # ==================================
+                # PREPARE FOR NEXT WAKE WORD
+                # ==================================
+
+                self.listener.prepare_for_wake_word()
+
+        finally:
+
+            if self.listener:
+
+                self.listener.close()
+
+            self.finished.emit()
+
+    # ==================================================
+    # STOP
+    # ==================================================
 
     def stop(self):
         """
-        Requests the listener to stop.
+        Stops the voice worker.
         """
 
         self.running = False
 
-        self._stop_wake_stream()
+        self.follow_up_requested.set()
 
-    def close(self):
-        """
-        Releases all microphone resources.
-        """
+        if self.listener:
 
-        self.running = False
-
-        self._stop_wake_stream()
-
-        self.audio.terminate()
+            self.listener.stop()

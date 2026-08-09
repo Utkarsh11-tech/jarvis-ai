@@ -1,3 +1,5 @@
+from PySide6.QtCore import QObject
+
 from brain.core.normalizer import normalize
 from brain.core.intent_detector import detect_intent
 from brain.core.target_extractor import extract_target
@@ -19,19 +21,23 @@ from brain.core.state import (
     StateManager,
 )
 
-from PySide6.QtCore import QObject
-
 
 class Assistant(QObject):
 
     def __init__(self, bridge):
+
         super().__init__()
 
         print("Assistant created")
 
         self.bridge = bridge
+
         self.state_manager = StateManager(bridge)
+
         self.context = ContextManager()
+
+        self.awaiting_chrome_profile = False
+        self.chrome_profiles = {}
 
         self.bridge.command_requested.connect(self.handle_command)
 
@@ -58,6 +64,20 @@ class Assistant(QObject):
         """
         Handles commands received from the Body.
         """
+
+        # ==========================================
+        # CHROME PROFILE RESPONSE
+        # ==========================================
+
+        if self.awaiting_chrome_profile:
+
+            self.handle_chrome_profile_response(command)
+
+            return
+
+        # ==========================================
+        # NORMAL COMMAND
+        # ==========================================
 
         self.state_manager.set_state(JarvisState.THINKING)
 
@@ -127,8 +147,233 @@ class Assistant(QObject):
 
     def request_chrome_profile(self):
         """
+        Gets Chrome profiles and asks the user
+        to select one using voice.
+        """
+
+        profiles = get_chrome_profiles()
+
+        if not profiles:
+
+            response = "No Chrome profiles were found."
+
+            print(response)
+
+            speak(response)
+
+            self.bridge.send_response(response)
+
+            self.state_manager.set_state(JarvisState.IDLE)
+
+            return
+
+        self.chrome_profiles = profiles
+
+        self.awaiting_chrome_profile = True
+
+        # ==========================================
+        # CREATE SPOKEN PROFILE LIST
+        # ==========================================
+
+        profile_names = []
+
+        for index, (
+            profile_directory,
+            profile_data,
+        ) in enumerate(
+            profiles.items(),
+            start=1,
+        ):
+
+            name = profile_data.get(
+                "name",
+                f"Profile {index}",
+            )
+
+            profile_names.append(f"{index}. {name}")
+
+        message = (
+            "I found "
+            f"{len(profile_names)} Chrome profiles. "
+            "Please choose one. "
+            + ", ".join(profile_names)
+            + ". You can say the profile number "
+            "or its name."
+        )
+
+        print(f"JARVIS: {message}")
+
+        self.state_manager.set_state(JarvisState.SPEAKING)
+
+        speak(message)
+
+        self.bridge.send_response(message)
+
+        # ==========================================
+        # REQUEST ONE-TIME VOICE INPUT
+        # ==========================================
+
+        self.bridge.request_voice_input()
+
+    # ==================================================
+    # HANDLE CHROME PROFILE RESPONSE
+    # ==================================================
+
+    def handle_chrome_profile_response(
+        self,
+        response,
+    ):
+        """
+        Resolves a spoken Chrome profile
+        selection by number or name.
+        """
+
+        if not response:
+
+            return
+
+        response = normalize(response)
+
+        print(f"JARVIS: Profile selection: {response}")
+
+        profiles = list(self.chrome_profiles.items())
+
+        selected_profile = None
+
+        # ==========================================
+        # NUMBER SELECTION
+        # ==========================================
+
+        number_words = {
+            "one": 1,
+            "two": 2,
+            "three": 3,
+            "four": 4,
+            "five": 5,
+            "six": 6,
+            "seven": 7,
+            "eight": 8,
+            "nine": 9,
+            "ten": 10,
+        }
+
+        words = response.split()
+
+        number = None
+
+        for word in words:
+
+            if word.isdigit():
+
+                number = int(word)
+
+                break
+
+            if word in number_words:
+
+                number = number_words[word]
+
+                break
+
+        if number is not None:
+
+            if 1 <= number <= len(profiles):
+
+                selected_profile = profiles[number - 1]
+
+        # ==========================================
+        # NAME SELECTION
+        # ==========================================
+
+        if selected_profile is None:
+
+            response_lower = response.lower()
+
+            for profile_directory, profile_data in profiles:
+
+                name = profile_data.get(
+                    "name",
+                    "",
+                ).lower()
+
+                if (
+                    response_lower == name
+                    or response_lower in name
+                    or name in response_lower
+                ):
+
+                    selected_profile = (
+                        profile_directory,
+                        profile_data,
+                    )
+
+                    break
+
+        # ==========================================
+        # INVALID SELECTION
+        # ==========================================
+
+        if selected_profile is None:
+
+            message = (
+                "I couldn't identify that Chrome "
+                "profile. Please say its number "
+                "or name."
+            )
+
+            print(f"JARVIS: {message}")
+
+            speak(message)
+
+            self.bridge.send_response(message)
+
+            self.bridge.request_voice_input()
+
+            return
+
+        # ==========================================
+        # PROFILE FOUND
+        # ==========================================
+
+        profile_directory = selected_profile[0]
+
+        profile_name = selected_profile[1].get(
+            "name",
+            "selected profile",
+        )
+
+        self.awaiting_chrome_profile = False
+
+        self.state_manager.set_state(JarvisState.EXECUTING)
+
+        message = f"Opening Chrome with " f"{profile_name}."
+
+        print(f"JARVIS: {message}")
+
+        speak(message)
+
+        response = open_chrome(profile_directory)
+
+        print(response)
+
+        self.bridge.send_response(response)
+
+        self.context.remember(
+            intent="OPEN_APPLICATION",
+            target="chrome",
+            response=response,
+        )
+
+        self.state_manager.set_state(JarvisState.IDLE)
+
+    # ==================================================
+    # REQUEST GUI CHROME PROFILE
+    # ==================================================
+
+    def request_chrome_profile_gui(self):
+        """
         Requests Chrome profile selection
-        from the GUI.
+        from the GUI as a fallback.
         """
 
         profiles = get_chrome_profiles()
@@ -150,7 +395,7 @@ class Assistant(QObject):
         self.bridge.request_profile_selection(list(profiles.items()))
 
     # ==================================================
-    # HANDLE CHROME PROFILE SELECTION
+    # HANDLE GUI PROFILE SELECTION
     # ==================================================
 
     def handle_profile_selected(
@@ -158,9 +403,11 @@ class Assistant(QObject):
         profile_directory,
     ):
         """
-        Handles the Chrome profile selected
-        by the user in the GUI.
+        Handles a Chrome profile selected
+        by the GUI.
         """
+
+        self.awaiting_chrome_profile = False
 
         self.state_manager.set_state(JarvisState.EXECUTING)
 
@@ -204,6 +451,7 @@ class Assistant(QObject):
         command = normalize(command)
 
         if not command:
+
             return []
 
         commands = command.replace(
@@ -218,6 +466,7 @@ class Assistant(QObject):
             words = current_command.split()
 
             if not words:
+
                 continue
 
             # -------------------------
@@ -267,7 +516,7 @@ class Assistant(QObject):
             results.append(result)
 
             # -------------------------
-            # UPDATE CONTEXT IMMEDIATELY
+            # UPDATE CONTEXT
             # -------------------------
 
             if target:

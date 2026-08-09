@@ -13,6 +13,9 @@ class JarvisBridge(QObject):
     # Requests that require user interaction in the GUI.
     profile_selection_requested = Signal(list)
 
+    # Requests one-time voice input from VoiceWorker.
+    voice_input_requested = Signal()
+
     # ==================================================
     # BODY → BRAIN
     # ==================================================
@@ -36,9 +39,10 @@ class JarvisBridge(QObject):
         self.response_received.emit(response)
 
     def request_profile_selection(self, profiles):
-        self.profile_selection_requested.emit(
-            profiles
-        )
+        self.profile_selection_requested.emit(profiles)
+
+    def request_voice_input(self):
+        self.voice_input_requested.emit()
 
     # ==================================================
     # BODY → BRAIN

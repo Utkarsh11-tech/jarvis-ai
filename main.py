@@ -56,7 +56,22 @@ def main():
 
     voice_worker.moveToThread(voice_thread)
 
+    # --------------------------------
+    # Voice → Bridge
+    # --------------------------------
+
     voice_worker.command_received.connect(bridge.send_command)
+
+    # --------------------------------
+    # Bridge → Voice Worker
+    # Request one-time follow-up input
+    # --------------------------------
+
+    bridge.voice_input_requested.connect(voice_worker.request_follow_up)
+
+    # --------------------------------
+    # Voice Worker shutdown
+    # --------------------------------
 
     voice_worker.finished.connect(voice_thread.quit)
 
