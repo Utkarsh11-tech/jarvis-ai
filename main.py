@@ -50,7 +50,7 @@ def main():
     # VOICE WORKER
     # ================================================
 
-    voice_worker = VoiceWorker()
+    voice_worker = VoiceWorker(bridge)
 
     voice_thread = QThread()
 

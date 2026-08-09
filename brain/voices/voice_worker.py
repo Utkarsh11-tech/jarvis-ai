@@ -1,6 +1,9 @@
 from PySide6.QtCore import QObject, Signal
 
 from brain.voices.listener import VoiceListener
+from bridge.bridge import JarvisBridge
+
+from brain.core.state import JarvisState
 
 
 class VoiceWorker(QObject):
@@ -8,11 +11,12 @@ class VoiceWorker(QObject):
     command_received = Signal(str)
     finished = Signal()
 
-    def __init__(self):
+    def __init__(self, bridge):
         super().__init__()
 
         self.listener = None
         self.running = True
+        self.bridge = bridge
 
     def run(self):
         """
@@ -27,10 +31,22 @@ class VoiceWorker(QObject):
 
             while self.running:
 
+                # -------------------------
+                # SLEEPING
+                # -------------------------
+
+                self.bridge.set_state(JarvisState.SLEEPING.value)
+
                 awakened = self.listener.listen_for_wake_word()
 
                 if not awakened:
                     continue
+
+                # -------------------------
+                # LISTENING
+                # -------------------------
+
+                self.bridge.set_state(JarvisState.LISTENING.value)
 
                 command = self.listener.listen_for_command()
 
