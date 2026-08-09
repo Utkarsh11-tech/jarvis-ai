@@ -26,6 +26,8 @@ class Assistant:
         self.bridge = bridge
         self.state_manager = StateManager(bridge)
 
+        self.bridge.command_requested.connect(self.handle_command)
+
     def start(self):
         self.initialize()
 
@@ -114,6 +116,39 @@ class Assistant:
 
             if self.listener:
                 self.listener.close()
+
+    def handle_command(self, command):
+        """
+        Handles commands received from the Body.
+        """
+
+        self.state_manager.set_state(JarvisState.THINKING)
+
+        results = self.process_command(command)
+
+        for result in results:
+
+            # -------------------------
+            # SPEAKING
+            # -------------------------
+
+            self.state_manager.set_state(JarvisState.SPEAKING)
+
+            acknowledgement = get_acknowledgement(result)
+
+            print(acknowledgement)
+
+            speak(acknowledgement)
+
+            # -------------------------
+            # EXECUTING
+            # -------------------------
+
+            self.state_manager.set_state(JarvisState.EXECUTING)
+
+            response = execute(result)
+
+            print(response)
 
     def initialize(self):
         """
