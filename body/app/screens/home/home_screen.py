@@ -57,6 +57,10 @@ class MainWindow(QMainWindow):
             self.handle_state_change
         )
 
+        self.bridge.response_received.connect(
+            self.handle_jarvis_response
+        )
+
         # Initial state
         self.orb.set_state(
             OrbState.IDLE
@@ -188,3 +192,11 @@ class MainWindow(QMainWindow):
             self.status.setText(
                 f"Status : Unknown state ({state})"
             )
+    # ==================================================
+    # HANDLE JARVIS RESPONSE
+    # ==================================================
+
+    def handle_jarvis_response(self, response):
+        self.chat.add_jarvis_message(
+            response
+        )
