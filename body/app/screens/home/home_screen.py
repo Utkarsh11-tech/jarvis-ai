@@ -257,11 +257,11 @@ class MainWindow(QMainWindow):
                 "Status : Listening..."
             )
 
-            self.microphone.start()
+            # Ask the existing VoiceWorker
+            # to capture one voice command.
+            self.bridge.request_voice_input()
 
         elif self.orb.state == OrbState.LISTENING:
-
-            self.microphone.stop()
 
             self.orb.set_state(
                 OrbState.IDLE
