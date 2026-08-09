@@ -32,6 +32,11 @@ INTENT_MAP = {
     "browse": "WEB_SEARCH",
     "lookup": "WEB_SEARCH",
     "look": "WEB_SEARCH",
+    # ==========================================
+    # UI AUTOMATION
+    # ==========================================
+    "automate": "UI_AUTOMATION",
+    "automation": "UI_AUTOMATION",
 }
 
 
@@ -42,6 +47,31 @@ def detect_intent(action, target=""):
     """
 
     action = action.lower().strip()
+    target = target.lower().strip()
+
+    # ==========================================
+    # UI AUTOMATION
+    # ==========================================
+
+    if action in {
+        "automate",
+        "automation",
+    }:
+
+        return "UI_AUTOMATION"
+
+    # ==========================================
+    # AUTOMATION TEST
+    # ==========================================
+
+    if action == "run" and target in {
+        "automation test",
+        "the automation test",
+        "ui automation test",
+        "the ui automation test",
+    }:
+
+        return "UI_AUTOMATION"
 
     # ==========================================
     # FILE SEARCH
@@ -53,6 +83,7 @@ def detect_intent(action, target=""):
     }:
 
         if target:
+
             return "FILE_SEARCH"
 
         return "WEB_SEARCH"

@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import webbrowser
+from pathlib import Path
 from urllib.parse import quote
 
 from brain.media.youtube_player import play_youtube
@@ -378,6 +379,55 @@ def play_media(target):
 
 
 # ==========================================
+# UI AUTOMATION
+# ==========================================
+
+
+def run_ui_automation_test():
+    """
+    Runs the JARVIS UI automation test.
+    """
+
+    from brain.automation.ui_monitor import (
+        UIElementMonitor,
+    )
+
+    monitor = UIElementMonitor()
+
+    try:
+
+        html_file = (
+            Path(__file__).resolve().parents[2] / "tests" / "automation_test.html"
+        )
+
+        if not html_file.exists():
+
+            return "The UI automation test file " "could not be found."
+
+        url = html_file.as_uri()
+
+        monitor.open_page(url)
+
+        success = monitor.wait_and_click("#test-button")
+
+        if success:
+
+            return "UI automation test " "completed successfully."
+
+        return "UI automation test failed."
+
+    except Exception as error:
+
+        print(f"JARVIS UI Automation Error: {error}")
+
+        return "I couldn't complete the " "UI automation test."
+
+    finally:
+
+        monitor.close()
+
+
+# ==========================================
 # ACKNOWLEDGEMENT
 # ==========================================
 
@@ -456,6 +506,14 @@ def get_acknowledgement(command):
         return f"Searching for {target}."
 
     # ==========================================
+    # UI AUTOMATION
+    # ==========================================
+
+    if intent == "UI_AUTOMATION":
+
+        return "Starting UI automation."
+
+    # ==========================================
     # DEFAULT
     # ==========================================
 
@@ -485,7 +543,7 @@ def execute(command):
         # through the GUI.
         if target == "chrome":
 
-            return "Chrome profile selection required."
+            return "Chrome profile selection " "required."
 
         application = APPLICATIONS.get(target)
 
@@ -555,6 +613,14 @@ def execute(command):
     if intent == "FILE_SEARCH":
 
         return search_filesystem(target)
+
+    # ==========================================
+    # UI AUTOMATION
+    # ==========================================
+
+    if intent == "UI_AUTOMATION":
+
+        return run_ui_automation_test()
 
     # ==========================================
     # UNKNOWN

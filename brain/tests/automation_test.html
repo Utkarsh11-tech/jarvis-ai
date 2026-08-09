@@ -1,0 +1,103 @@
+```html
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+    <title>JARVIS Automation Test</title>
+
+    <style>
+
+        body {
+            font-family: Arial;
+            text-align: center;
+            margin-top: 150px;
+        }
+
+        #success {
+            display: none;
+            color: green;
+            font-size: 30px;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 20px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <h1>JARVIS UI Automation Test</h1>
+
+    <p id="status">
+        Waiting for JARVIS...
+    </p>
+
+    <button
+        id="test-button"
+        style="display: none;"
+        onclick="completeTest()"
+    >
+        TEST ACTION
+    </button>
+
+    <p id="success">
+        JARVIS successfully performed the action!
+    </p>
+
+    <script>
+
+        function showButton() {
+
+            document.getElementById(
+                "test-button"
+            ).style.display = "inline-block";
+
+            document.getElementById(
+                "status"
+            ).innerText =
+                "The action is now available.";
+
+        }
+
+        function completeTest() {
+
+            document.getElementById(
+                "test-button"
+            ).style.display = "none";
+
+            document.getElementById(
+                "status"
+            ).innerText =
+                "Action completed.";
+
+            document.getElementById(
+                "success"
+            ).style.display = "block";
+
+        }
+
+        // Simulate an unpredictable
+        // availability time.
+
+        const delay =
+            Math.floor(
+                Math.random() * 10000
+            ) + 3000;
+
+        setTimeout(
+            showButton,
+            delay
+        );
+
+    </script>
+
+</body>
+
+</html>
+```
