@@ -106,7 +106,7 @@ class Assistant(QObject):
             self.bridge.send_response(response)
 
             # -------------------------
-            # UPDATE CONTEXT
+            # UPDATE RESPONSE
             # -------------------------
 
             self.context.remember(
@@ -170,6 +170,12 @@ class Assistant(QObject):
 
         self.bridge.send_response(response)
 
+        self.context.remember(
+            intent="OPEN_APPLICATION",
+            target="chrome",
+            response=response,
+        )
+
         self.state_manager.set_state(JarvisState.IDLE)
 
     # ==================================================
@@ -190,6 +196,9 @@ class Assistant(QObject):
     def process_command(self, command):
         """
         Processes one or multiple user commands.
+
+        Context is updated after every command
+        so later commands can reference earlier ones.
         """
 
         command = normalize(command)
@@ -250,11 +259,22 @@ class Assistant(QObject):
             # STORE RESULT
             # -------------------------
 
-            results.append(
-                {
-                    "intent": intent,
-                    "target": target,
-                }
-            )
+            result = {
+                "intent": intent,
+                "target": target,
+            }
+
+            results.append(result)
+
+            # -------------------------
+            # UPDATE CONTEXT IMMEDIATELY
+            # -------------------------
+
+            if target:
+
+                self.context.remember(
+                    intent=intent,
+                    target=target,
+                )
 
         return results

@@ -4,6 +4,8 @@ import subprocess
 import webbrowser
 from urllib.parse import quote
 
+from brain.media.youtube_player import play_youtube
+
 # ==========================================
 # APPLICATIONS
 # ==========================================
@@ -68,6 +70,7 @@ def open_chrome(profile_directory):
     """
 
     if not profile_directory:
+
         return "No Chrome profile was selected."
 
     profiles = get_chrome_profiles()
@@ -175,10 +178,12 @@ def get_available_drives():
         drive = f"{drive_letter}:\\"
 
         if os.path.exists(drive):
+
             drives.append(drive)
 
     # Search C: only as a last resort.
     if os.path.exists("C:\\"):
+
         drives.append("C:\\")
 
     return drives
@@ -194,11 +199,13 @@ def find_filesystem_matches(target):
     """
 
     if not target:
+
         return [], []
 
     target = target.strip()
 
     if not target:
+
         return [], []
 
     drives = get_available_drives()
@@ -230,7 +237,10 @@ def find_filesystem_matches(target):
                 and not directory.startswith(".")
             ]
 
-            # Search folders.
+            # -------------------------
+            # SEARCH FOLDERS
+            # -------------------------
+
             for directory in directories:
 
                 if directory.lower() == target.lower():
@@ -242,7 +252,10 @@ def find_filesystem_matches(target):
                         )
                     )
 
-            # Search files.
+            # -------------------------
+            # SEARCH FILES
+            # -------------------------
+
             for file in files:
 
                 if file.lower() == target.lower():
@@ -348,18 +361,20 @@ def open_folder(path):
 
 def play_media(target):
     """
-    Searches YouTube for the requested media.
+    Plays the requested media on YouTube.
     """
 
     if not target:
 
         return "What would you like me to play?"
 
-    search_url = "https://www.youtube.com/results?search_query=" + quote(target)
+    success = play_youtube(target)
 
-    webbrowser.open(search_url)
+    if success:
 
-    return f"Playing {target}."
+        return f"Playing {target}."
+
+    return f"I couldn't play {target}."
 
 
 # ==========================================
