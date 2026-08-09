@@ -152,7 +152,7 @@ class Assistant:
                 response
             )
 
-            print(response)
+          
 
     def initialize(self):
         """
