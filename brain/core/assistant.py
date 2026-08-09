@@ -9,7 +9,6 @@ from brain.core.executor import (
 from bridge.bridge import JarvisBridge
 
 from brain.voices.voice_manager import speak
-from brain.voices.listener import VoiceListener
 
 from brain.core.state import (
     JarvisState,
