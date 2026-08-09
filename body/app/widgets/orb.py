@@ -16,6 +16,7 @@ class OrbState(Enum):
     LISTENING = "listening"
     THINKING = "thinking"
     SPEAKING = "speaking"
+    EXECUTING = "executing"
     ERROR = "error"
     SUCCESS = "success"
 
@@ -77,6 +78,9 @@ class OrbWidget(QWidget):
 
         elif self.state == OrbState.THINKING:
             self.pulse += 0.08
+
+        elif self.state == OrbState.EXECUTING:
+            self.pulse += 0.12
 
         else:
             self.pulse += 0.04
