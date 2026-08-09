@@ -1,6 +1,7 @@
 from brain.core.normalizer import normalize
 from brain.core.intent_detector import detect_intent
 from brain.core.target_extractor import extract_target
+from brain.core.context import ContextManager
 
 from brain.core.executor import (
     execute,
@@ -30,6 +31,7 @@ class Assistant(QObject):
 
         self.bridge = bridge
         self.state_manager = StateManager(bridge)
+        self.context = ContextManager()
 
         self.bridge.command_requested.connect(self.handle_command)
 
@@ -62,6 +64,7 @@ class Assistant(QObject):
         results = self.process_command(command)
 
         if not results:
+
             self.state_manager.set_state(JarvisState.IDLE)
 
             return
@@ -101,6 +104,16 @@ class Assistant(QObject):
             print(response)
 
             self.bridge.send_response(response)
+
+            # -------------------------
+            # UPDATE CONTEXT
+            # -------------------------
+
+            self.context.remember(
+                intent=result["intent"],
+                target=result["target"],
+                response=response,
+            )
 
         # -------------------------
         # RETURN TO IDLE
@@ -184,7 +197,10 @@ class Assistant(QObject):
         if not command:
             return []
 
-        commands = command.replace(" and then ", " and ").split(" and ")
+        commands = command.replace(
+            " and then ",
+            " and ",
+        ).split(" and ")
 
         results = []
 
@@ -195,17 +211,44 @@ class Assistant(QObject):
             if not words:
                 continue
 
+            # -------------------------
+            # ACTION
+            # -------------------------
+
             action = words[0]
 
+            # -------------------------
+            # TARGET
+            # -------------------------
+
             target = extract_target(words)
+
+            # -------------------------
+            # CONTEXT RESOLUTION
+            # -------------------------
+
+            target = self.context.resolve_reference(target)
+
+            # -------------------------
+            # INTENT
+            # -------------------------
 
             intent = detect_intent(
                 action,
                 target,
             )
 
+            # -------------------------
+            # SYSTEM COMMAND
+            # -------------------------
+
             if intent == "SYSTEM_COMMAND" and not target:
+
                 target = action
+
+            # -------------------------
+            # STORE RESULT
+            # -------------------------
 
             results.append(
                 {

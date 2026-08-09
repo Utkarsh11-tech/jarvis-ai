@@ -4,6 +4,10 @@ import subprocess
 import webbrowser
 from urllib.parse import quote
 
+# ==========================================
+# APPLICATIONS
+# ==========================================
+
 APPLICATIONS = {
     "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
     "notepad": "notepad.exe",
@@ -11,9 +15,15 @@ APPLICATIONS = {
 }
 
 
+# ==========================================
+# CHROME
+# ==========================================
+
+
 def get_chrome_profiles():
     """
-    Retrieves available Chrome profiles from the Chrome configuration.
+    Retrieves available Chrome profiles
+    from the Chrome configuration.
     """
 
     local_state_path = os.path.join(
@@ -41,7 +51,13 @@ def get_chrome_profiles():
 
         return {}
 
-    profile_info = local_state.get("profile", {}).get("info_cache", {})
+    profile_info = local_state.get(
+        "profile",
+        {},
+    ).get(
+        "info_cache",
+        {},
+    )
 
     return profile_info
 
@@ -56,9 +72,15 @@ def open_chrome(profile_directory):
 
     profiles = get_chrome_profiles()
 
-    selected_profile = profiles.get(profile_directory, {})
+    selected_profile = profiles.get(
+        profile_directory,
+        {},
+    )
 
-    selected_name = selected_profile.get("name", "Unknown")
+    selected_name = selected_profile.get(
+        "name",
+        "Unknown",
+    )
 
     chrome_path = APPLICATIONS["chrome"]
 
@@ -78,9 +100,15 @@ def open_chrome(profile_directory):
         return f"I couldn't open {selected_name}."
 
 
+# ==========================================
+# SYSTEM COMMANDS
+# ==========================================
+
+
 def execute_system_command(target):
     """
-    Executes a system command after user confirmation.
+    Executes a system command after
+    user confirmation.
     """
 
     if target == "shutdown":
@@ -128,9 +156,15 @@ def execute_system_command(target):
     return f"I don't know how to perform {target}."
 
 
+# ==========================================
+# FILESYSTEM
+# ==========================================
+
+
 def get_available_drives():
     """
-    Returns available Windows drives with C: searched last.
+    Returns available Windows drives with
+    C: searched last.
     """
 
     drives = []
@@ -152,7 +186,8 @@ def get_available_drives():
 
 def find_filesystem_matches(target):
     """
-    Searches for files and folders and returns their actual paths.
+    Searches for files and folders and returns
+    their actual paths.
 
     Non-C drives are searched first.
     C: is searched last.
@@ -200,14 +235,24 @@ def find_filesystem_matches(target):
 
                 if directory.lower() == target.lower():
 
-                    folder_matches.append(os.path.join(root, directory))
+                    folder_matches.append(
+                        os.path.join(
+                            root,
+                            directory,
+                        )
+                    )
 
             # Search files.
             for file in files:
 
                 if file.lower() == target.lower():
 
-                    file_matches.append(os.path.join(root, file))
+                    file_matches.append(
+                        os.path.join(
+                            root,
+                            file,
+                        )
+                    )
 
         # Stop searching after finding a result
         # on a non-C drive.
@@ -220,8 +265,8 @@ def find_filesystem_matches(target):
 
 def search_filesystem(target):
     """
-    Searches for both files and folders and returns
-    a human-readable result.
+    Searches for both files and folders and
+    returns a human-readable result.
     """
 
     if not target:
@@ -265,7 +310,8 @@ def search_filesystem(target):
 
 def open_file(path):
     """
-    Opens a file using its default Windows application.
+    Opens a file using its default
+    Windows application.
     """
 
     try:
@@ -295,6 +341,32 @@ def open_folder(path):
         return f"I couldn't open folder " f"{os.path.basename(path)}."
 
 
+# ==========================================
+# MEDIA
+# ==========================================
+
+
+def play_media(target):
+    """
+    Searches YouTube for the requested media.
+    """
+
+    if not target:
+
+        return "What would you like me to play?"
+
+    search_url = "https://www.youtube.com/results?search_query=" + quote(target)
+
+    webbrowser.open(search_url)
+
+    return f"Playing {target}."
+
+
+# ==========================================
+# ACKNOWLEDGEMENT
+# ==========================================
+
+
 def get_acknowledgement(command):
     """
     Generates a response that JARVIS can speak
@@ -303,6 +375,10 @@ def get_acknowledgement(command):
 
     intent = command["intent"]
     target = command["target"]
+
+    # ==========================================
+    # OPEN APPLICATION
+    # ==========================================
 
     if intent == "OPEN_APPLICATION":
 
@@ -316,6 +392,22 @@ def get_acknowledgement(command):
 
         return f"Searching for {target}."
 
+    # ==========================================
+    # PLAY MEDIA
+    # ==========================================
+
+    if intent == "PLAY_MEDIA":
+
+        if not target:
+
+            return "What would you like me to play?"
+
+        return f"Playing {target}."
+
+    # ==========================================
+    # WEB SEARCH
+    # ==========================================
+
     if intent == "WEB_SEARCH":
 
         if not target:
@@ -323,6 +415,10 @@ def get_acknowledgement(command):
             return "What would you like " "me to search for?"
 
         return f"Searching for {target}."
+
+    # ==========================================
+    # SYSTEM COMMAND
+    # ==========================================
 
     if intent == "SYSTEM_COMMAND":
 
@@ -336,11 +432,24 @@ def get_acknowledgement(command):
 
         return f"Preparing to perform {target}."
 
+    # ==========================================
+    # FILE SEARCH
+    # ==========================================
+
     if intent == "FILE_SEARCH":
 
         return f"Searching for {target}."
 
+    # ==========================================
+    # DEFAULT
+    # ==========================================
+
     return "I'll take care of that."
+
+
+# ==========================================
+# MAIN EXECUTOR
+# ==========================================
 
 
 def execute(command):
@@ -350,6 +459,10 @@ def execute(command):
 
     intent = command["intent"]
     target = command["target"]
+
+    # ==========================================
+    # OPEN APPLICATION
+    # ==========================================
 
     if intent == "OPEN_APPLICATION":
 
@@ -375,6 +488,7 @@ def execute(command):
 
         # If it isn't an application,
         # search for a matching file or folder.
+
         file_matches, folder_matches = find_filesystem_matches(target)
 
         if file_matches:
@@ -386,6 +500,18 @@ def execute(command):
             return open_folder(folder_matches[0])
 
         return f"I couldn't find {target}."
+
+    # ==========================================
+    # PLAY MEDIA
+    # ==========================================
+
+    if intent == "PLAY_MEDIA":
+
+        return play_media(target)
+
+    # ==========================================
+    # WEB SEARCH
+    # ==========================================
 
     if intent == "WEB_SEARCH":
 
@@ -399,12 +525,24 @@ def execute(command):
 
         return f"Searching for {target}."
 
+    # ==========================================
+    # SYSTEM COMMAND
+    # ==========================================
+
     if intent == "SYSTEM_COMMAND":
 
         return execute_system_command(target)
 
+    # ==========================================
+    # FILE SEARCH
+    # ==========================================
+
     if intent == "FILE_SEARCH":
 
         return search_filesystem(target)
+
+    # ==========================================
+    # UNKNOWN
+    # ==========================================
 
     return "I don't know how to execute " "that command."

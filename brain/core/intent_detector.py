@@ -1,3 +1,8 @@
+# ==========================================
+# INTENT DETECTOR
+# ==========================================
+
+
 INTENT_MAP = {
     # ==========================================
     # APPLICATIONS
@@ -11,6 +16,8 @@ INTENT_MAP = {
     # MEDIA
     # ==========================================
     "play": "PLAY_MEDIA",
+    "listen": "PLAY_MEDIA",
+    "put": "PLAY_MEDIA",
     # ==========================================
     # SYSTEM
     # ==========================================
@@ -23,6 +30,8 @@ INTENT_MAP = {
     "search": "WEB_SEARCH",
     "google": "WEB_SEARCH",
     "browse": "WEB_SEARCH",
+    "lookup": "WEB_SEARCH",
+    "look": "WEB_SEARCH",
 }
 
 
@@ -49,17 +58,10 @@ def detect_intent(action, target=""):
         return "WEB_SEARCH"
 
     # ==========================================
-    # WEB LOOKUP
-    # ==========================================
-
-    if action in {
-        "lookup",
-    }:
-
-        return "WEB_SEARCH"
-
-    # ==========================================
     # INTENT MAP
     # ==========================================
 
-    return INTENT_MAP.get(action, "UNKNOWN")
+    return INTENT_MAP.get(
+        action,
+        "UNKNOWN",
+    )
