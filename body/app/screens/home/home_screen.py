@@ -15,7 +15,7 @@ from body.app.widgets.chat_input import ChatInput
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, bridge):
         super().__init__()
 
         self.setWindowTitle("JARVIS")
@@ -51,7 +51,7 @@ class MainWindow(QMainWindow):
         )
 
         # ---------- Bridge ----------
-        self.bridge = JarvisBridge()
+        self.bridge = bridge
 
         self.bridge.state_changed.connect(
             self.handle_state_change
