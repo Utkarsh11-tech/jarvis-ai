@@ -379,9 +379,10 @@ class Assistant(QObject):
 
         profile_data = selected_profile[1]
 
-        actual_profile_name = profile_data.get(
-            "name",
-            profile_name,
+        actual_profile_name = (
+            profile_data.get("name")
+            or profile_name
+            or "the selected profile"
         )
 
         # ==========================================
@@ -400,7 +401,9 @@ class Assistant(QObject):
 
         print(response)
 
-        self.bridge.send_response(response)
+        self.bridge.send_response(
+            message if response.startswith("Opening ") else response
+        )
 
         # ==========================================
         # NO FOLLOW-UP
@@ -769,9 +772,10 @@ class Assistant(QObject):
 
         profile_directory = selected_profile[0]
 
-        profile_name = selected_profile[1].get(
-            "name",
-            "selected profile",
+        profile_name = (
+            selected_profile[1].get("name")
+            or selected_profile[0]
+            or "the selected profile"
         )
 
         self.awaiting_chrome_profile = False
@@ -788,7 +792,9 @@ class Assistant(QObject):
 
         print(response)
 
-        self.bridge.send_response(response)
+        self.bridge.send_response(
+            message if response.startswith("Opening ") else response
+        )
 
         self.context.remember(
             intent="OPEN_APPLICATION",

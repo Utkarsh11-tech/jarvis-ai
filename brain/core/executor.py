@@ -83,9 +83,9 @@ def open_chrome(profile_directory):
         {},
     )
 
-    selected_name = selected_profile.get(
-        "name",
-        "Unknown",
+    selected_name = (
+        selected_profile.get("name")
+        or "the selected profile"
     )
 
     chrome_path = APPLICATIONS["chrome"]

@@ -1,7 +1,8 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 
 from PySide6.QtWidgets import (
     QFrame,
+    QLayout,
     QScrollArea,
     QVBoxLayout,
     QWidget,
@@ -172,6 +173,12 @@ class ConversationWidget(QWidget):
             14
         )
 
+        # Let the scroll area's content grow to the complete height of
+        # wrapped chat bubbles instead of keeping only the viewport height.
+        self.message_layout.setSizeConstraint(
+            QLayout.SizeConstraint.SetMinimumSize
+        )
+
         self.scroll_area.setWidget(
             self.container
         )
@@ -195,7 +202,7 @@ class ConversationWidget(QWidget):
             alignment=Qt.AlignmentFlag.AlignRight
         )
 
-        self.scroll_to_bottom()
+        self._scroll_to_bottom_after_layout()
 
     # ==================================================
     # ADD JARVIS MESSAGE
@@ -216,7 +223,15 @@ class ConversationWidget(QWidget):
             alignment=Qt.AlignmentFlag.AlignLeft
         )
 
-        self.scroll_to_bottom()
+        self._scroll_to_bottom_after_layout()
+
+    def _scroll_to_bottom_after_layout(self):
+        """Scroll after Qt has calculated the new bubble's wrapped height."""
+
+        QTimer.singleShot(
+            0,
+            self.scroll_to_bottom,
+        )
 
     # ==================================================
     # SCROLL TO BOTTOM
