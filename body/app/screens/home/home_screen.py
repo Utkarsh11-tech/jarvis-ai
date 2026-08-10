@@ -908,10 +908,6 @@ class MainWindow(QMainWindow):
             self.show_overlay_if_external_app
         )
 
-        self.bridge.response_received.connect(
-            self.overlay.hide_overlay
-        )
-
         # ==========================================
         # MICROPHONE → ORB
         # ==========================================
@@ -1201,6 +1197,18 @@ class MainWindow(QMainWindow):
             self.status.setText(
                 f"STATUS  :  {state.upper()}"
             )
+
+            # ==========================================
+            # OVERLAY LIFECYCLE
+            # ==========================================
+
+            if orb_state == OrbState.IDLE:
+
+                self.overlay.hide_overlay()
+
+            # ==========================================
+            # MICROPHONE
+            # ==========================================
 
             if (
                 orb_state
