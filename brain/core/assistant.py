@@ -8,6 +8,7 @@ from brain.core.normalizer import normalize
 from brain.core.intent_detector import detect_intent
 from brain.core.target_extractor import extract_target
 from brain.core.context import ContextManager
+from brain.core.greeting import get_greeting
 
 from brain.core.executor import (
     execute,
@@ -36,35 +37,24 @@ def extract_chrome_profile_command(command):
     command from natural-language Chrome profile
     requests.
 
-    Supported examples:
-
-        open vinod chrome
-            -> ("vinod", "")
-
-        open vinod's chrome
-            -> ("vinod", "")
+    Examples:
 
         open vinod chrome profile
-            -> ("vinod", "")
-
-        open vinod's chrome profile
             -> ("vinod", "")
 
         open the chrome profile of vinod
             -> ("vinod", "")
 
-        open chrome profile of vinod
-            -> ("vinod", "")
-
         open vinod chrome profile and play believer
-            -> ("vinod", "play believer")
-
-        open vinod's chrome and play believer
             -> ("vinod", "play believer")
 
         open the chrome profile of vinod and then
         play believer
             -> ("vinod", "play believer")
+
+        open vinod chrome profile and search
+        machine learning
+            -> ("vinod", "search machine learning")
     """
 
     command = normalize(command)
@@ -87,17 +77,9 @@ def extract_chrome_profile_command(command):
         # ------------------------------------------
         (r"^open\s+(.+?)['’]s\s+chrome\s+profile" r"(?:\s+and(?:\s+then)?\s+(.+))?$"),
         # ------------------------------------------
-        # open vinod's chrome
-        # ------------------------------------------
-        (r"^open\s+(.+?)['’]s\s+chrome" r"(?:\s+and(?:\s+then)?\s+(.+))?$"),
-        # ------------------------------------------
         # open vinod chrome profile
         # ------------------------------------------
         (r"^open\s+(.+?)\s+chrome\s+profile" r"(?:\s+and(?:\s+then)?\s+(.+))?$"),
-        # ------------------------------------------
-        # open vinod chrome
-        # ------------------------------------------
-        (r"^open\s+(.+?)\s+chrome" r"(?:\s+and(?:\s+then)?\s+(.+))?$"),
         # ------------------------------------------
         # open chrome profile vinod
         # ------------------------------------------
@@ -162,8 +144,25 @@ class Assistant(QObject):
     # ==================================================
 
     def run(self):
+        """
+        Starts the Brain worker.
+        """
 
         self.initialize()
+
+        # ==========================================
+        # STARTUP GREETING
+        # ==========================================
+
+        greeting = get_greeting()
+
+        print(f"JARVIS: {greeting}")
+
+        speak(greeting)
+
+        # ==========================================
+        # BRAIN READY
+        # ==========================================
 
         print("JARVIS Brain is ready.")
 
@@ -172,6 +171,9 @@ class Assistant(QObject):
     # ==================================================
 
     def handle_command(self, command):
+        """
+        Handles commands received from the Body.
+        """
 
         if not command:
             return
@@ -217,6 +219,10 @@ class Assistant(QObject):
 
         for result in results:
 
+            # -------------------------
+            # SPEAKING
+            # -------------------------
+
             self.state_manager.set_state(JarvisState.SPEAKING)
 
             acknowledgement = get_acknowledgement(result)
@@ -257,6 +263,10 @@ class Assistant(QObject):
                 response=response,
             )
 
+        # -------------------------
+        # RETURN TO IDLE
+        # -------------------------
+
         self.state_manager.set_state(JarvisState.IDLE)
 
     # ==================================================
@@ -267,6 +277,9 @@ class Assistant(QObject):
         self,
         profile_name,
     ):
+        """
+        Finds a Chrome profile using its spoken name.
+        """
 
         profiles = get_chrome_profiles()
 
@@ -274,6 +287,9 @@ class Assistant(QObject):
             return None
 
         profile_name = normalize(profile_name).lower().strip()
+
+        # Remove unnecessary words from
+        # the spoken profile name.
 
         profile_name = re.sub(
             r"\b(profile|chrome)\b",
@@ -312,8 +328,20 @@ class Assistant(QObject):
         self,
         command,
     ):
+        """
+        Cleans common spoken media phrases.
+        """
 
-        return normalize(command).strip()
+        command = normalize(command).strip()
+
+        command = re.sub(
+            r"\s+on\s+(youtube\s+music|youtube|yt)\s*$",
+            "",
+            command,
+            flags=re.IGNORECASE,
+        )
+
+        return command.strip()
 
     # ==================================================
     # EXECUTE DIRECTED CHROME COMMAND
@@ -324,6 +352,12 @@ class Assistant(QObject):
         profile_name,
         remaining_command,
     ):
+        """
+        Opens a specific Chrome profile directly.
+
+        If a remaining command exists, it is executed
+        using the selected Chrome profile.
+        """
 
         selected_profile = self.resolve_chrome_profile(profile_name)
 
@@ -351,24 +385,28 @@ class Assistant(QObject):
         )
 
         # ==========================================
+        # OPEN CHROME PROFILE
+        # ==========================================
+
+        self.state_manager.set_state(JarvisState.EXECUTING)
+
+        message = f"Opening Chrome with " f"{actual_profile_name}."
+
+        print(f"JARVIS: {message}")
+
+        speak(message)
+
+        response = open_chrome(profile_directory)
+
+        print(response)
+
+        self.bridge.send_response(response)
+
+        # ==========================================
         # NO FOLLOW-UP
         # ==========================================
 
         if not remaining_command:
-
-            self.state_manager.set_state(JarvisState.EXECUTING)
-
-            message = f"Opening Chrome with " f"{actual_profile_name}."
-
-            print(f"JARVIS: {message}")
-
-            speak(message)
-
-            response = open_chrome(profile_directory)
-
-            print(response)
-
-            self.bridge.send_response(response)
 
             self.context.remember(
                 intent="OPEN_APPLICATION",
@@ -479,6 +517,10 @@ class Assistant(QObject):
         self,
         result,
     ):
+        """
+        Executes a command that was explicitly
+        directed to a Chrome profile.
+        """
 
         self.state_manager.set_state(JarvisState.SPEAKING)
 
@@ -491,7 +533,7 @@ class Assistant(QObject):
         self.state_manager.set_state(JarvisState.EXECUTING)
 
         # ==========================================
-        # WEB SEARCH
+        # WEB SEARCH IN SELECTED PROFILE
         # ==========================================
 
         if result["intent"] == "WEB_SEARCH":
@@ -500,6 +542,8 @@ class Assistant(QObject):
                 "target",
                 "",
             )
+
+            profile_directory = result.get("profile_directory")
 
             if target:
 
@@ -532,6 +576,10 @@ class Assistant(QObject):
     # ==================================================
 
     def request_chrome_profile(self):
+        """
+        Gets Chrome profiles and asks the user
+        to select one using voice.
+        """
 
         profiles = get_chrome_profiles()
 
@@ -552,6 +600,10 @@ class Assistant(QObject):
         self.chrome_profiles = profiles
 
         self.awaiting_chrome_profile = True
+
+        # ==========================================
+        # CREATE SPOKEN PROFILE LIST
+        # ==========================================
 
         profile_names = []
 
@@ -587,6 +639,10 @@ class Assistant(QObject):
 
         self.bridge.send_response(message)
 
+        # ==========================================
+        # REQUEST ONE-TIME VOICE INPUT
+        # ==========================================
+
         self.bridge.request_voice_input()
 
     # ==================================================
@@ -597,6 +653,10 @@ class Assistant(QObject):
         self,
         response,
     ):
+        """
+        Resolves a spoken Chrome profile
+        selection by number or name.
+        """
 
         if not response:
             return
@@ -608,6 +668,10 @@ class Assistant(QObject):
         profiles = list(self.chrome_profiles.items())
 
         selected_profile = None
+
+        # ==========================================
+        # NUMBER SELECTION
+        # ==========================================
 
         number_words = {
             "one": 1,
@@ -646,6 +710,10 @@ class Assistant(QObject):
 
                 selected_profile = profiles[number - 1]
 
+        # ==========================================
+        # NAME SELECTION
+        # ==========================================
+
         if selected_profile is None:
 
             response_lower = response.lower()
@@ -673,6 +741,10 @@ class Assistant(QObject):
 
                     break
 
+        # ==========================================
+        # INVALID SELECTION
+        # ==========================================
+
         if selected_profile is None:
 
             message = (
@@ -690,6 +762,10 @@ class Assistant(QObject):
             self.bridge.request_voice_input()
 
             return
+
+        # ==========================================
+        # PROFILE FOUND
+        # ==========================================
 
         profile_directory = selected_profile[0]
 
@@ -727,6 +803,10 @@ class Assistant(QObject):
     # ==================================================
 
     def request_chrome_profile_gui(self):
+        """
+        Requests Chrome profile selection
+        from the GUI as a fallback.
+        """
 
         profiles = get_chrome_profiles()
 
@@ -754,6 +834,10 @@ class Assistant(QObject):
         self,
         profile_directory,
     ):
+        """
+        Handles a Chrome profile selected
+        by the GUI.
+        """
 
         self.awaiting_chrome_profile = False
 
@@ -778,6 +862,9 @@ class Assistant(QObject):
     # ==================================================
 
     def initialize(self):
+        """
+        Initializes all required modules.
+        """
 
         print("Initializing all required modules.....")
 
@@ -789,6 +876,12 @@ class Assistant(QObject):
         self,
         command,
     ):
+        """
+        Processes one or multiple user commands.
+
+        Context is updated after every command
+        so later commands can reference earlier ones.
+        """
 
         command = normalize(command)
 
