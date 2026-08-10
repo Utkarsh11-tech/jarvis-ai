@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 
 from PySide6.QtWidgets import (
     QLabel,
@@ -57,13 +57,8 @@ class ChatBubble(QFrame):
         )
 
         self.label.setSizePolicy(
-            QSizePolicy.Policy.Preferred,
-            QSizePolicy.Policy.Minimum,
-        )
-
-        self.setSizePolicy(
-            QSizePolicy.Policy.Maximum,
-            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Fixed,
         )
 
         # ---------- Add Widgets ----------
@@ -124,5 +119,26 @@ class ChatBubble(QFrame):
             """
         )
 
-        # ---------- Bubble Width ----------
-        self.setMaximumWidth(500)
+        # ---------- Bubble Size ----------
+        # QLabel's automatic height-for-width is not honoured when these
+        # bubbles are aligned inside the conversation layout.  Size the label
+        # explicitly so every wrapped line is included in the bubble height.
+        bubble_width = 500
+        margins = self.message_layout.contentsMargins()
+        text_width = bubble_width - margins.left() - margins.right() - 2
+
+        self.label.setFixedWidth(text_width)
+        self._text_width = text_width
+        self._update_text_height()
+        self.setFixedWidth(bubble_width)
+
+        # Stylesheets are polished after construction. Recalculate once more
+        # with the final font metrics before the bubble is displayed.
+        QTimer.singleShot(0, self._update_text_height)
+
+    def _update_text_height(self):
+        self.label.setFixedHeight(
+            self.label.heightForWidth(self._text_width)
+        )
+        self.message_layout.invalidate()
+        self.updateGeometry()
