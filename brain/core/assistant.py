@@ -100,7 +100,6 @@ def extract_chrome_profile_command(command):
         remaining_command = ""
 
         if match.group(2):
-
             remaining_command = match.group(2).strip()
 
         return (
@@ -155,7 +154,10 @@ class Assistant(QObject):
     # HANDLE COMMAND
     # ==================================================
 
-    def handle_command(self, command):
+    def handle_command(
+        self,
+        command,
+    ):
         """
         Handles commands received from the Body.
         """
@@ -275,6 +277,7 @@ class Assistant(QObject):
 
         # Remove unnecessary words from
         # the spoken profile name.
+
         profile_name = re.sub(
             r"\b(profile|chrome)\b",
             "",
@@ -313,33 +316,22 @@ class Assistant(QObject):
         command,
     ):
         """
-        Cleans common spoken media phrases.
+        Cleans the media command while preserving
+        the requested platform.
 
         Examples:
 
             play believer
-                -> believer
+                -> play believer
 
             play believer on youtube
-                -> believer
-
-            play believer on yt
-                -> believer
+                -> play believer on youtube
 
             play believer on youtube music
-                -> believer
+                -> play believer on youtube music
         """
 
-        command = normalize(command).strip()
-
-        command = re.sub(
-            r"\s+on\s+(youtube\s+music|youtube|yt)\s*$",
-            "",
-            command,
-            flags=re.IGNORECASE,
-        )
-
-        return command.strip()
+        return normalize(command).strip()
 
     # ==================================================
     # EXECUTE DIRECTED CHROME COMMAND
@@ -355,6 +347,13 @@ class Assistant(QObject):
 
         If a remaining command exists, it is executed
         using the selected Chrome profile.
+
+        Important:
+        If there is a follow-up command, Chrome is NOT
+        opened separately first. The follow-up executor
+        opens the selected profile itself.
+
+        This prevents Chrome from being launched twice.
         """
 
         selected_profile = self.resolve_chrome_profile(profile_name)
@@ -383,28 +382,24 @@ class Assistant(QObject):
         )
 
         # ==========================================
-        # OPEN CHROME PROFILE
-        # ==========================================
-
-        self.state_manager.set_state(JarvisState.EXECUTING)
-
-        message = f"Opening Chrome with " f"{actual_profile_name}."
-
-        print(f"JARVIS: {message}")
-
-        speak(message)
-
-        response = open_chrome(profile_directory)
-
-        print(response)
-
-        self.bridge.send_response(response)
-
-        # ==========================================
         # NO FOLLOW-UP
         # ==========================================
 
         if not remaining_command:
+
+            self.state_manager.set_state(JarvisState.EXECUTING)
+
+            message = f"Opening Chrome with " f"{actual_profile_name}."
+
+            print(f"JARVIS: {message}")
+
+            speak(message)
+
+            response = open_chrome(profile_directory)
+
+            print(response)
+
+            self.bridge.send_response(response)
 
             self.context.remember(
                 intent="OPEN_APPLICATION",
@@ -542,17 +537,6 @@ class Assistant(QObject):
             )
 
             profile_directory = result.get("profile_directory")
-
-            # Selenium/YouTube is handled
-            # by PLAY_MEDIA.
-
-            # For now, open Google using
-            # the selected profile through
-            # the normal Chrome command.
-            #
-            # The actual Selenium-based
-            # profile web automation will be
-            # expanded after media is stable.
 
             if target:
 
@@ -881,7 +865,10 @@ class Assistant(QObject):
     # PROCESS COMMAND
     # ==================================================
 
-    def process_command(self, command):
+    def process_command(
+        self,
+        command,
+    ):
         """
         Processes one or multiple user commands.
 
