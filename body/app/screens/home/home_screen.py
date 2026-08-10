@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from body.app.widgets.overlay import JarvisOverlay
 from body.app.widgets.orb import OrbWidget, OrbState
 from body.app.widgets.microphone import Microphone
 from body.app.widgets.conversation import ConversationWidget
@@ -813,7 +814,6 @@ class MainWindow(QMainWindow):
 
         self.main_layout = QVBoxLayout()
 
-        # ORIGINAL PROPORTIONS
         self.main_layout.setContentsMargins(
             38,
             28,
@@ -874,28 +874,11 @@ class MainWindow(QMainWindow):
 
         self.orb = OrbWidget()
 
-        # IMPORTANT:
-        # No minimum/maximum height here.
-        # The original layout controls the orb size.
-        # ==========================================
-
         # ==========================================
         # MICROPHONE
         # ==========================================
 
         self.microphone = Microphone()
-
-        self.microphone.level_changed.connect(
-            self.orb.set_audio_level
-        )
-
-        # ==========================================
-        # ORB CLICK
-        # ==========================================
-
-        self.orb.clicked.connect(
-            self.toggle_listening
-        )
 
         # ==========================================
         # BRIDGE
@@ -913,6 +896,44 @@ class MainWindow(QMainWindow):
 
         self.bridge.profile_selection_requested.connect(
             self.handle_profile_selection
+        )
+
+        # ==========================================
+        # WAKE WORD OVERLAY
+        # ==========================================
+
+        self.overlay = JarvisOverlay()
+
+        self.bridge.wake_detected.connect(
+            self.show_overlay_if_external_app
+        )
+
+        self.bridge.response_received.connect(
+            self.overlay.hide_overlay
+        )
+
+        # ==========================================
+        # MICROPHONE → ORB
+        # ==========================================
+
+        self.microphone.level_changed.connect(
+            self.orb.set_audio_level
+        )
+
+        # ==========================================
+        # MICROPHONE → OVERLAY
+        # ==========================================
+
+        self.microphone.level_changed.connect(
+            self.overlay.set_audio_level
+        )
+
+        # ==========================================
+        # ORB CLICK
+        # ==========================================
+
+        self.orb.clicked.connect(
+            self.toggle_listening
         )
 
         # ==========================================
@@ -992,14 +1013,6 @@ class MainWindow(QMainWindow):
         # ==========================================
         # ADD WIDGETS
         # ==========================================
-
-        # ORIGINAL PROPORTIONS
-        # Header = 1
-        # Orb = 5
-        # Status = 1
-        # Chat = 3
-        # Chat input = default
-        # Footer = 1
 
         self.main_layout.addWidget(
             self.header,
@@ -1118,6 +1131,19 @@ class MainWindow(QMainWindow):
         self.bridge.send_profile_selection(
             profile_directory
         )
+
+    # ==================================================
+    # SHOW OVERLAY ONLY ON EXTERNAL APPS
+    # ==================================================
+
+    def show_overlay_if_external_app(self):
+
+        # If the JARVIS window itself is active,
+        # don't show the floating overlay.
+        if self.isActiveWindow():
+            return
+
+        self.overlay.show_overlay()
 
     # ==================================================
     # TOGGLE LISTENING

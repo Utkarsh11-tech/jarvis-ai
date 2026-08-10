@@ -10,6 +10,9 @@ class JarvisBridge(QObject):
     state_changed = Signal(str)
     response_received = Signal(str)
 
+    # Wake word was detected
+    wake_detected = Signal()
+
     # Requests that require user interaction in the GUI.
     profile_selection_requested = Signal(list)
 
@@ -37,6 +40,9 @@ class JarvisBridge(QObject):
 
     def send_response(self, response):
         self.response_received.emit(response)
+
+    def wake_detected_event(self):
+        self.wake_detected.emit()
 
     def request_profile_selection(self, profiles):
         self.profile_selection_requested.emit(profiles)

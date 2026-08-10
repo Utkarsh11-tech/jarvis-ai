@@ -101,6 +101,8 @@ class VoiceWorker(QObject):
 
                     continue
 
+                self.bridge.wake_detected_event()
+                
                 # ==================================
                 # LISTENING
                 # ==================================
