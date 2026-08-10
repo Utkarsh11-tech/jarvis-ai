@@ -1,13 +1,14 @@
 from PySide6.QtCore import Qt
-
 from PySide6.QtWidgets import (
     QLabel,
     QVBoxLayout,
     QFrame,
+    QSizePolicy,
 )
 
 
 class ChatBubble(QFrame):
+
     def __init__(
         self,
         message,
@@ -16,10 +17,13 @@ class ChatBubble(QFrame):
     ):
         super().__init__(parent)
 
-        self.message = message
+        self.message = str(message)
         self.is_user = is_user
 
-        # ---------- Main Layout ----------
+        # ==========================================
+        # MAIN LAYOUT
+        # ==========================================
+
         self.message_layout = QVBoxLayout()
 
         self.message_layout.setContentsMargins(
@@ -29,13 +33,18 @@ class ChatBubble(QFrame):
             10
         )
 
-        self.message_layout.setSpacing(5)
+        self.message_layout.setSpacing(
+            5
+        )
 
         self.setLayout(
             self.message_layout
         )
 
-        # ---------- Header ----------
+        # ==========================================
+        # HEADER
+        # ==========================================
+
         self.header = QLabel(
             "YOU" if self.is_user else "JARVIS"
         )
@@ -44,11 +53,16 @@ class ChatBubble(QFrame):
             Qt.AlignmentFlag.AlignLeft
         )
 
-        # ---------- Message ----------
+        # ==========================================
+        # MESSAGE
+        # ==========================================
+
         self.label = QLabel(
-            message
+            self.message
         )
 
+        # IMPORTANT:
+        # Allow the complete message to wrap.
         self.label.setWordWrap(True)
 
         self.label.setTextInteractionFlags(
@@ -56,11 +70,20 @@ class ChatBubble(QFrame):
         )
 
         self.label.setSizePolicy(
-            self.label.sizePolicy().horizontalPolicy(),
-            self.label.sizePolicy().verticalPolicy()
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Minimum
         )
 
-        # ---------- Add Widgets ----------
+        # Allow the label to calculate its
+        # required height from the complete text.
+        self.label.setMinimumHeight(
+            0
+        )
+
+        # ==========================================
+        # ADD WIDGETS
+        # ==========================================
+
         self.message_layout.addWidget(
             self.header
         )
@@ -69,18 +92,39 @@ class ChatBubble(QFrame):
             self.label
         )
 
-        # ---------- Alignment ----------
+        # ==========================================
+        # ALIGNMENT
+        # ==========================================
+
         if self.is_user:
+
             self.message_layout.setAlignment(
                 Qt.AlignmentFlag.AlignRight
             )
 
         else:
+
             self.message_layout.setAlignment(
                 Qt.AlignmentFlag.AlignLeft
             )
 
-        # ---------- Styling ----------
+        # ==========================================
+        # BUBBLE SIZE
+        # ==========================================
+
+        self.setMaximumWidth(
+            500
+        )
+
+        self.setSizePolicy(
+            QSizePolicy.Policy.Maximum,
+            QSizePolicy.Policy.Minimum
+        )
+
+        # ==========================================
+        # STYLING
+        # ==========================================
+
         self.setStyleSheet(
             """
             QFrame {
@@ -97,7 +141,10 @@ class ChatBubble(QFrame):
             """
         )
 
-        # ---------- Header Styling ----------
+        # ==========================================
+        # HEADER STYLING
+        # ==========================================
+
         self.header.setStyleSheet(
             """
             QLabel {
@@ -108,7 +155,10 @@ class ChatBubble(QFrame):
             """
         )
 
-        # ---------- Message Styling ----------
+        # ==========================================
+        # MESSAGE STYLING
+        # ==========================================
+
         self.label.setStyleSheet(
             """
             QLabel {
@@ -117,6 +167,3 @@ class ChatBubble(QFrame):
             }
             """
         )
-
-        # ---------- Bubble Width ----------
-        self.setMaximumWidth(500)
