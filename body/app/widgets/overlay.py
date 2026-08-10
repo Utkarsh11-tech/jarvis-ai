@@ -2,7 +2,7 @@ import math
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPainter, QColor, QPen
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QApplication, QWidget
 
 
 class JarvisOverlay(QWidget):
@@ -60,9 +60,9 @@ class JarvisOverlay(QWidget):
 
     def show_overlay(self):
 
-        screen = self.screen()
+        screen = QApplication.primaryScreen()
 
-        if screen is None and self.windowHandle():
+        if self.windowHandle() and self.windowHandle().screen():
             screen = self.windowHandle().screen()
 
         if screen is not None:

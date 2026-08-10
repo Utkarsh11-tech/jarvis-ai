@@ -8,6 +8,7 @@ from PySide6.QtGui import (
 )
 
 from PySide6.QtWidgets import (
+    QApplication,
     QLabel,
     QMainWindow,
     QVBoxLayout,
@@ -905,7 +906,7 @@ class MainWindow(QMainWindow):
         self.overlay = JarvisOverlay()
 
         self.bridge.wake_detected.connect(
-            self.show_overlay_if_external_app
+            self.show_wake_overlay
         )
 
         # ==========================================
@@ -1129,14 +1130,22 @@ class MainWindow(QMainWindow):
         )
 
     # ==================================================
-    # SHOW OVERLAY ONLY ON EXTERNAL APPS
+    # SHOW WAKE OVERLAY
     # ==================================================
 
-    def show_overlay_if_external_app(self):
+    def show_wake_overlay(self):
+        active_window = QApplication.activeWindow()
 
-        # If the JARVIS window itself is active,
-        # don't show the floating overlay.
-        if self.isActiveWindow():
+        # Keep the main JARVIS interface uncluttered. The floating indicator
+        # is only useful when the user is interacting with another app.
+        if (
+            active_window is self
+            or (
+                active_window is not None
+                and self.isAncestorOf(active_window)
+            )
+        ):
+            self.overlay.hide_overlay()
             return
 
         self.overlay.show_overlay()
@@ -1202,24 +1211,18 @@ class MainWindow(QMainWindow):
             # OVERLAY LIFECYCLE
             # ==========================================
 
-            if orb_state == OrbState.IDLE:
-
-                self.overlay.hide_overlay()
-
-            # ==========================================
-            # MICROPHONE
-            # ==========================================
-
             if (
                 orb_state
                 == OrbState.LISTENING
             ):
 
                 self.microphone.start()
+                self.show_wake_overlay()
 
             else:
 
                 self.microphone.stop()
+                self.overlay.hide_overlay()
 
         except ValueError:
 
