@@ -28,6 +28,21 @@ class Assistant(BaseAssistant):
         self.conversation = ConversationManager()
 
     # ==================================================
+    # MEDIA COMMAND CLEANUP
+    # ==================================================
+
+    def clean_media_command(self, command):
+        """
+        Normalizes a media command without removing the platform suffix.
+
+        The base implementation strips phrases such as "on youtube music".
+        That is incorrect for the conversational Chrome flow because the
+        executor uses that phrase to decide between YouTube and YouTube Music.
+        """
+
+        return normalize(command).strip()
+
+    # ==================================================
     # CONVERSATION-AWARE COMMAND HANDLER
     # ==================================================
 
@@ -40,11 +55,7 @@ class Assistant(BaseAssistant):
         # ------------------------------------------
         # WAKE WORD
         # ------------------------------------------
-        #
-        # assistant_v2 overrides BaseAssistant.handle_command(), so the
-        # inherited wake-word check must be performed explicitly here.
-        # Otherwise a typed "hey jarvis" reaches normal command processing.
-        #
+
         if self.is_wake_word(command):
             self.handle_wake_word()
             return
@@ -90,8 +101,6 @@ class Assistant(BaseAssistant):
             print(acknowledgement)
             speak(acknowledgement)
 
-            # Chrome needs a user selection. Register that interaction
-            # before requesting the actual voice input.
             if (
                 result["intent"] == "OPEN_APPLICATION"
                 and result["target"] == "chrome"
@@ -135,8 +144,6 @@ class Assistant(BaseAssistant):
 
         self.handle_chrome_profile_response(response)
 
-        # The existing Chrome resolver keeps its legacy flag true when the
-        # selection is invalid. In that case the conversation remains active.
         if self.awaiting_chrome_profile:
             self.conversation.record_attempt()
             return
