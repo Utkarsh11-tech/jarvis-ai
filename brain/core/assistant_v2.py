@@ -18,11 +18,11 @@ from brain.voices.voice_manager import speak
 
 class Assistant(BaseAssistant):
     """
-    Day 9 conversational Assistant.
+    Day 10 conversational Assistant.
 
-    Extends the existing Assistant without removing any of its current
-    command execution capabilities. Pending user interactions are managed by
-    ConversationManager instead of adding feature-specific state flags.
+    Extends the existing Assistant with reusable conversation state and
+    contextual follow-up commands while preserving existing command
+    execution capabilities.
     """
 
     def __init__(self, bridge):
@@ -112,13 +112,7 @@ class Assistant(BaseAssistant):
         cancel_response="Cancelled.",
         action_data=None,
     ):
-        """
-        Starts a reusable confirmation interaction.
-
-        `action` identifies what should happen after confirmation and
-        `action_data` contains any data needed by that action. This keeps
-        confirmation state independent from the command being confirmed.
-        """
+        """Starts a reusable confirmation interaction."""
         self.conversation.start(
             kind="confirmation",
             state=ConversationState.WAITING_FOR_CONFIRMATION,
@@ -136,12 +130,7 @@ class Assistant(BaseAssistant):
         return True
 
     def _execute_confirmed_action(self, action, action_data):
-        """
-        Executes a confirmed action through one centralized dispatcher.
-
-        Add future confirmed actions here without changing the generic
-        confirmation conversation flow.
-        """
+        """Executes a confirmed action through one centralized dispatcher."""
         if action == "shutdown":
             return execute({"intent": "SYSTEM", "target": "shutdown"})
 
@@ -188,7 +177,6 @@ class Assistant(BaseAssistant):
         return True
 
     def _start_shutdown_confirmation(self):
-        """Starts the reusable confirmation flow for shutdown."""
         return self.request_confirmation(
             action="shutdown",
             prompt="Are you sure you want to shut down the computer?",
@@ -196,11 +184,71 @@ class Assistant(BaseAssistant):
         )
 
     # ==================================================
+    # CONTEXTUAL PROFILE HELPERS
+    # ==================================================
+
+    def _find_profile_selection(self, response):
+        """Resolves a spoken/typed Chrome profile selection from the current list."""
+        response = normalize(response).strip().lower()
+        profiles = list(self.chrome_profiles.items())
+
+        number_words = {
+            "one": 1,
+            "two": 2,
+            "three": 3,
+            "four": 4,
+            "five": 5,
+            "six": 6,
+            "seven": 7,
+            "eight": 8,
+            "nine": 9,
+            "ten": 10,
+        }
+
+        number = None
+        for word in response.split():
+            if word.isdigit():
+                number = int(word)
+                break
+            if word in number_words:
+                number = number_words[word]
+                break
+
+        if number is not None and 1 <= number <= len(profiles):
+            return profiles[number - 1]
+
+        for profile_directory, profile_data in profiles:
+            name = profile_data.get("name", "").lower().strip()
+            if response == name or response in name or name in response:
+                return profile_directory, profile_data
+
+        return None
+
+    def _remember_profile(self, profile_directory, profile_name=""):
+        """Stores the selected Chrome profile without replacing media context."""
+        self.context.remember(
+            profile_directory=profile_directory,
+            profile_name=profile_name,
+        )
+
+    def handle_directed_chrome_command(self, profile_name, remaining_command):
+        """Preserves the selected profile for later conversational follow-ups."""
+        selected_profile = self.resolve_chrome_profile(profile_name)
+        super().handle_directed_chrome_command(profile_name, remaining_command)
+
+        if selected_profile is not None:
+            profile_directory, profile_data = selected_profile
+            self._remember_profile(
+                profile_directory,
+                profile_data.get("name", profile_name),
+            )
+
+    # ==================================================
     # CONVERSATION-AWARE COMMAND HANDLER
     # ==================================================
 
     def handle_command(self, command):
-        """Routes wake words, pending responses, and normal commands."""
+        """Routes wake words, pending responses, and contextual commands."""
         if not command:
             return
 
@@ -211,7 +259,6 @@ class Assistant(BaseAssistant):
         if self._handle_stop_command(command):
             return
 
-        # A pending confirmation takes priority over normal intent parsing.
         if self.conversation.is_waiting_for("confirmation"):
             self._handle_confirmation_response(command)
             return
@@ -220,7 +267,6 @@ class Assistant(BaseAssistant):
             self._handle_chrome_profile_response(command)
             return
 
-        # Start confirmation before executor's legacy interactive input().
         normalized = normalize(command).strip().lower()
         if normalized in {
             "shutdown",
@@ -263,6 +309,16 @@ class Assistant(BaseAssistant):
                 self.request_chrome_profile()
                 return
 
+            # A media follow-up can inherit the last explicitly selected
+            # Chrome profile. This is what makes `play it again` and
+            # `play believer` after a profile selection conversational.
+            if (
+                result["intent"] == "PLAY_MEDIA"
+                and not result.get("profile_directory")
+                and self.context.get_last_profile_directory()
+            ):
+                result["profile_directory"] = self.context.get_last_profile_directory()
+
             self.state_manager.set_state(JarvisState.EXECUTING)
             response = execute(result)
             print(response)
@@ -280,13 +336,22 @@ class Assistant(BaseAssistant):
     # ==================================================
 
     def _handle_chrome_profile_response(self, response):
-        """Resolves a response belonging to the pending Chrome selection."""
+        """Resolves a profile and stores it for later follow-up commands."""
+        selected_profile = self._find_profile_selection(response)
+
         self.state_manager.set_state(JarvisState.THINKING)
         self.handle_chrome_profile_response(response)
 
         if self.awaiting_chrome_profile:
             self.conversation.record_attempt()
             return
+
+        if selected_profile is not None:
+            profile_directory, profile_data = selected_profile
+            self._remember_profile(
+                profile_directory,
+                profile_data.get("name", ""),
+            )
 
         self.conversation.clear()
 
@@ -295,18 +360,23 @@ class Assistant(BaseAssistant):
     # ==================================================
 
     def handle_profile_selected(self, profile_directory):
-        """Completes a pending interaction selected through the GUI."""
+        """Completes a GUI profile selection and stores it for follow-ups."""
+        profile_name = ""
+        for directory, profile_data in self.chrome_profiles.items():
+            if directory == profile_directory:
+                profile_name = profile_data.get("name", "")
+                break
+
         self.conversation.clear()
         super().handle_profile_selected(profile_directory)
+        self._remember_profile(profile_directory, profile_name)
 
     # ==================================================
     # CONVERSATION HELPERS
     # ==================================================
 
     def is_waiting_for_user(self):
-        """Returns whether JARVIS is currently waiting for a response."""
         return self.conversation.is_waiting()
 
     def get_pending_interaction(self):
-        """Returns the active pending interaction, if one exists."""
         return self.conversation.get_pending()
