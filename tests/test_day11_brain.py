@@ -3,6 +3,11 @@ from unittest.mock import patch
 from brain.core.assistant_v2 import Assistant
 
 
+def _bare_assistant():
+    """Create a QObject subclass instance without running __init__."""
+    return Assistant.__new__(Assistant)
+
+
 def test_confirmation_parser_accepts_yes_and_no_variants():
     assert Assistant._parse_confirmation("yes") is True
     assert Assistant._parse_confirmation("sure") is True
@@ -13,7 +18,7 @@ def test_confirmation_parser_accepts_yes_and_no_variants():
 
 
 def test_confirmed_shutdown_uses_system_command_without_console_input():
-    assistant = object.__new__(Assistant)
+    assistant = _bare_assistant()
 
     with patch("brain.core.assistant_v2.subprocess.Popen") as popen:
         response = assistant._execute_confirmed_action("shutdown", {})
@@ -23,7 +28,7 @@ def test_confirmed_shutdown_uses_system_command_without_console_input():
 
 
 def test_confirmed_restart_uses_system_command_without_console_input():
-    assistant = object.__new__(Assistant)
+    assistant = _bare_assistant()
 
     with patch("brain.core.assistant_v2.subprocess.Popen") as popen:
         response = assistant._execute_confirmed_action("restart", {})
@@ -33,7 +38,7 @@ def test_confirmed_restart_uses_system_command_without_console_input():
 
 
 def test_media_cleanup_preserves_platform_suffix():
-    assistant = object.__new__(Assistant)
+    assistant = _bare_assistant()
 
     assert assistant.clean_media_command(
         "play believer on youtube music"
