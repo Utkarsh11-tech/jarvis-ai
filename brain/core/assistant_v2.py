@@ -32,9 +32,21 @@ class Assistant(BaseAssistant):
     # ==================================================
 
     def handle_command(self, command):
-        """Routes either a pending response or a new command."""
+        """Routes wake words, pending responses, and normal commands."""
 
         if not command:
+            return
+
+        # ------------------------------------------
+        # WAKE WORD
+        # ------------------------------------------
+        #
+        # assistant_v2 overrides BaseAssistant.handle_command(), so the
+        # inherited wake-word check must be performed explicitly here.
+        # Otherwise a typed "hey jarvis" reaches normal command processing.
+        #
+        if self.is_wake_word(command):
+            self.handle_wake_word()
             return
 
         # ------------------------------------------
