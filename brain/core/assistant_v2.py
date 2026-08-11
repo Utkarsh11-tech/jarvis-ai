@@ -1,3 +1,5 @@
+import ctypes
+
 from PySide6.QtCore import QObject
 
 from brain.core.assistant import (
@@ -43,6 +45,53 @@ class Assistant(BaseAssistant):
         return normalize(command).strip()
 
     # ==================================================
+    # STOP PLAYBACK
+    # ==================================================
+
+    def _handle_stop_command(self, command):
+        """Stops active media using the Windows media-stop key."""
+
+        normalized = normalize(command).strip()
+
+        if normalized not in {
+            "stop",
+            "stop playing",
+            "stop the music",
+            "stop the song",
+            "stop the video",
+        }:
+            return False
+
+        self.state_manager.set_state(JarvisState.EXECUTING)
+
+        try:
+            ctypes.windll.user32.keybd_event(
+                0xB2,
+                0,
+                0,
+                0,
+            )
+            ctypes.windll.user32.keybd_event(
+                0xB2,
+                0,
+                2,
+                0,
+            )
+
+            response = "Playback stopped."
+
+        except Exception as error:
+            print(f"JARVIS: Could not stop playback: {error}")
+            response = "I couldn't stop playback."
+
+        print(response)
+        speak(response)
+        self.bridge.send_response(response)
+        self.state_manager.set_state(JarvisState.IDLE)
+
+        return True
+
+    # ==================================================
     # CONVERSATION-AWARE COMMAND HANDLER
     # ==================================================
 
@@ -58,6 +107,13 @@ class Assistant(BaseAssistant):
 
         if self.is_wake_word(command):
             self.handle_wake_word()
+            return
+
+        # ------------------------------------------
+        # STOP PLAYBACK
+        # ------------------------------------------
+
+        if self._handle_stop_command(command):
             return
 
         # ------------------------------------------
