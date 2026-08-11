@@ -40,3 +40,18 @@ def test_clear_ends_interaction():
     assert pending.kind == "chrome_profile"
     assert not manager.is_waiting()
     assert manager.get_pending() is None
+
+
+def test_confirmation_state_is_supported():
+    manager = ConversationManager()
+
+    pending = manager.start(
+        kind="confirmation",
+        state=ConversationState.WAITING_FOR_CONFIRMATION,
+        prompt="Are you sure?",
+        metadata={"action": "shutdown"},
+    )
+
+    assert manager.is_waiting_for("confirmation")
+    assert pending.state == ConversationState.WAITING_FOR_CONFIRMATION
+    assert pending.metadata["action"] == "shutdown"
