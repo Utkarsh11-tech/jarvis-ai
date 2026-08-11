@@ -167,6 +167,60 @@ class Assistant(QObject):
         print("JARVIS Brain is ready.")
 
     # ==================================================
+    # WAKE WORD
+    # ==================================================
+
+    def is_wake_word(self, command):
+        """
+        Checks whether the received input is a JARVIS
+        wake-word command.
+
+        The wake word is handled separately from
+        normal commands.
+        """
+
+        if not command:
+            return False
+
+        command = normalize(command).strip().lower()
+
+        wake_words = {
+            "hey jarvis",
+            "hey jarvis.",
+        }
+
+        return command in wake_words
+
+    def handle_wake_word(self):
+        """
+        Handles the JARVIS wake word.
+
+        The wake word changes JARVIS into LISTENING
+        state and does NOT get processed as a normal
+        command.
+        """
+
+        print("JARVIS: Wake word detected.")
+
+        # ==========================================
+        # CHANGE STATE
+        # ==========================================
+
+        self.state_manager.set_state(JarvisState.LISTENING)
+
+        # ==========================================
+        # WAKE RESPONSE
+        # ==========================================
+
+        response = "Yes?"
+
+        print(f"JARVIS: {response}")
+
+        speak(response)
+
+        self.bridge.send_response(response)
+
+    # ==================================================
     # HANDLE COMMAND
     # ==================================================
 
@@ -176,6 +230,28 @@ class Assistant(QObject):
         """
 
         if not command:
+            return
+
+        # ==========================================
+        # WAKE WORD
+        # ==========================================
+
+        # IMPORTANT:
+        #
+        # "hey jarvis" is NOT treated as a normal
+        # command.
+        #
+        # It only wakes JARVIS and changes the
+        # state to LISTENING.
+        #
+        # The return statement prevents the wake
+        # word from reaching process_command().
+        # ==========================================
+
+        if self.is_wake_word(command):
+
+            self.handle_wake_word()
+
             return
 
         # ==========================================
@@ -380,9 +456,7 @@ class Assistant(QObject):
         profile_data = selected_profile[1]
 
         actual_profile_name = (
-            profile_data.get("name")
-            or profile_name
-            or "the selected profile"
+            profile_data.get("name") or profile_name or "the selected profile"
         )
 
         # ==========================================
