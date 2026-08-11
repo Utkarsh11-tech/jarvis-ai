@@ -10,13 +10,11 @@ class ContextManager:
     """
 
     def __init__(self):
-        """
-        Initializes the context.
-        """
-
         self.last_target = ""
         self.last_intent = ""
         self.last_response = ""
+        self.last_profile_directory = ""
+        self.last_profile_name = ""
 
     # ==========================================
     # REMEMBER
@@ -27,11 +25,10 @@ class ContextManager:
         intent="",
         target="",
         response="",
+        profile_directory="",
+        profile_name="",
     ):
-        """
-        Stores information about the most
-        recent meaningful command.
-        """
+        """Stores the most recent meaningful conversational context."""
 
         if target:
             self.last_target = target
@@ -41,6 +38,12 @@ class ContextManager:
 
         if response:
             self.last_response = response
+
+        if profile_directory:
+            self.last_profile_directory = profile_directory
+
+        if profile_name:
+            self.last_profile_name = profile_name
 
     # ==========================================
     # RESOLVE REFERENCE
@@ -54,79 +57,68 @@ class ContextManager:
         that
         this
         them
+        it again
+        that again
+        once more
         """
 
         if not target:
             return target
-
-        reference_words = {
-            "it",
-            "that",
-            "this",
-            "them",
-        }
 
         words = target.split()
 
         if not words:
             return target
 
-        # ------------------------------------------
-        # Target is only a reference
-        # ------------------------------------------
+        # "again" and "once more" describe the previous action rather
+        # than being part of the media/file target itself.
+        while words and words[-1] in {"again", "once", "more"}:
+            words.pop()
 
-        if len(words) == 1:
+        if words[-2:] == ["once", "more"]:
+            words = words[:-2]
 
-            if words[0] in reference_words:
+        if not words:
+            return self.last_target
 
-                if self.last_target:
+        reference_words = {"it", "that", "this", "them"}
 
-                    return self.last_target
+        if len(words) == 1 and words[0] in reference_words:
+            return self.last_target or target
 
-        return target
+        # Handle phrases such as "it again" after removing the modifier.
+        if words[0] in reference_words and self.last_target:
+            return " ".join([self.last_target, *words[1:]]).strip()
+
+        return " ".join(words).strip()
 
     # ==========================================
-    # GET LAST TARGET
+    # GET LAST CONTEXT
     # ==========================================
 
     def get_last_target(self):
-        """
-        Returns the most recently remembered target.
-        """
-
         return self.last_target
 
-    # ==========================================
-    # GET LAST INTENT
-    # ==========================================
-
     def get_last_intent(self):
-        """
-        Returns the most recently remembered intent.
-        """
-
         return self.last_intent
 
-    # ==========================================
-    # GET LAST RESPONSE
-    # ==========================================
-
     def get_last_response(self):
-        """
-        Returns the most recently remembered response.
-        """
-
         return self.last_response
+
+    def get_last_profile_directory(self):
+        return self.last_profile_directory
+
+    def get_last_profile_name(self):
+        return self.last_profile_name
 
     # ==========================================
     # CLEAR
     # ==========================================
 
     def clear(self):
-        """
-        Clears the current conversational context.
-        """
-
+        """Clears the current conversational context."""
         self.last_target = ""
         self.last_intent = ""
         self.last_response = ""
+        self.last_profile_directory = ""
+        self.last_profile_name = ""
