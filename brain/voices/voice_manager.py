@@ -1,7 +1,7 @@
 from brain.voices.online_speaker import speak_online
 from brain.voices.offline_speaker import speak_offline
 
-VOICE_MODE = "online"
+VOICE_MODE = "offline"
 
 
 def speak(text: str) -> None:
