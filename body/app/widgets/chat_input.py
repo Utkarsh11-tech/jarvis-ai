@@ -156,6 +156,11 @@ class ChatInput(QWidget):
         if not message:
             return
 
+        print(
+            "CHAT INPUT:",
+            repr(message)
+        )
+
         # Send through signal
         self.message_sent.emit(
             message

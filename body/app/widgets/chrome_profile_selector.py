@@ -52,9 +52,9 @@ class ChromeProfileSelector(QDialog):
 
         for profile_directory, profile_data in profiles:
 
-            profile_name = profile_data.get(
-                "name",
-                "Unknown"
+            profile_name = (
+                profile_data.get("name")
+                or "Unnamed profile"
             )
 
             button = QPushButton(
