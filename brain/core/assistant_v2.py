@@ -71,7 +71,7 @@ class Assistant(BaseAssistant):
         return True
 
     # ==================================================
-    # CONFIRMATION HANDLING
+    # GENERIC CONFIRMATION HANDLING
     # ==================================================
 
     @staticmethod
@@ -105,8 +105,50 @@ class Assistant(BaseAssistant):
             return False
         return None
 
+    def request_confirmation(
+        self,
+        action,
+        prompt,
+        cancel_response="Cancelled.",
+        action_data=None,
+    ):
+        """
+        Starts a reusable confirmation interaction.
+
+        `action` identifies what should happen after confirmation and
+        `action_data` contains any data needed by that action. This keeps
+        confirmation state independent from the command being confirmed.
+        """
+        self.conversation.start(
+            kind="confirmation",
+            state=ConversationState.WAITING_FOR_CONFIRMATION,
+            prompt=prompt,
+            metadata={
+                "action": action,
+                "action_data": dict(action_data or {}),
+                "cancel_response": cancel_response,
+            },
+        )
+
+        print(f"JARVIS: {prompt}")
+        speak(prompt)
+        self.bridge.send_response(prompt)
+        return True
+
+    def _execute_confirmed_action(self, action, action_data):
+        """
+        Executes a confirmed action through one centralized dispatcher.
+
+        Add future confirmed actions here without changing the generic
+        confirmation conversation flow.
+        """
+        if action == "shutdown":
+            return execute({"intent": "SYSTEM", "target": "shutdown"})
+
+        return None
+
     def _handle_confirmation_response(self, command):
-        """Resolves a pending confirmation without executing unsafe actions on ambiguity."""
+        """Resolves a pending confirmation without executing ambiguous actions."""
         pending = self.conversation.get_pending()
         if pending is None or pending.state != ConversationState.WAITING_FOR_CONFIRMATION:
             return False
@@ -122,49 +164,36 @@ class Assistant(BaseAssistant):
             return True
 
         action = pending.metadata.get("action")
+        action_data = pending.metadata.get("action_data", {})
+        cancel_response = pending.metadata.get("cancel_response", "Cancelled.")
         self.conversation.clear()
 
         if not answer:
-            message = pending.metadata.get("cancel_response", "Cancelled.")
-            print(f"JARVIS: {message}")
-            speak(message)
-            self.bridge.send_response(message)
+            print(f"JARVIS: {cancel_response}")
+            speak(cancel_response)
+            self.bridge.send_response(cancel_response)
             self.state_manager.set_state(JarvisState.IDLE)
             return True
 
-        if action == "shutdown":
-            self.state_manager.set_state(JarvisState.EXECUTING)
-            message = execute({"intent": "SYSTEM", "target": "shutdown"})
-            print(message)
-            speak(message)
-            self.bridge.send_response(message)
-            self.state_manager.set_state(JarvisState.IDLE)
-            return True
+        self.state_manager.set_state(JarvisState.EXECUTING)
+        response = self._execute_confirmed_action(action, action_data)
 
-        message = "I couldn't complete that confirmation."
-        print(f"JARVIS: {message}")
-        speak(message)
-        self.bridge.send_response(message)
+        if response is None:
+            response = "I couldn't complete that confirmed action."
+
+        print(f"JARVIS: {response}")
+        speak(response)
+        self.bridge.send_response(response)
         self.state_manager.set_state(JarvisState.IDLE)
         return True
 
     def _start_shutdown_confirmation(self):
-        """Starts the generic confirmation flow for shutdown."""
-        self.conversation.start(
-            kind="confirmation",
-            state=ConversationState.WAITING_FOR_CONFIRMATION,
+        """Starts the reusable confirmation flow for shutdown."""
+        return self.request_confirmation(
+            action="shutdown",
             prompt="Are you sure you want to shut down the computer?",
-            metadata={
-                "action": "shutdown",
-                "cancel_response": "Shutdown cancelled.",
-            },
+            cancel_response="Shutdown cancelled.",
         )
-
-        message = "Are you sure you want to shut down the computer?"
-        print(f"JARVIS: {message}")
-        speak(message)
-        self.bridge.send_response(message)
-        return True
 
     # ==================================================
     # CONVERSATION-AWARE COMMAND HANDLER
@@ -191,10 +220,14 @@ class Assistant(BaseAssistant):
             self._handle_chrome_profile_response(command)
             return
 
-        # Start the generic confirmation flow before executor's legacy
-        # interactive input() confirmation can run.
+        # Start confirmation before executor's legacy interactive input().
         normalized = normalize(command).strip().lower()
-        if normalized in {"shutdown", "shut down", "turn off the computer", "turn off computer"}:
+        if normalized in {
+            "shutdown",
+            "shut down",
+            "turn off the computer",
+            "turn off computer",
+        }:
             self.state_manager.set_state(JarvisState.THINKING)
             self._start_shutdown_confirmation()
             return
