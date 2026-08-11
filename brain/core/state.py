@@ -1,5 +1,4 @@
 from enum import Enum
-from bridge.bridge import JarvisBridge
 
 
 class JarvisState(Enum):
