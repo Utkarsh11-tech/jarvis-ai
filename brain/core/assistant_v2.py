@@ -1,4 +1,5 @@
 import ctypes
+import subprocess
 
 from PySide6.QtCore import QObject
 
@@ -18,11 +19,10 @@ from brain.voices.voice_manager import speak
 
 class Assistant(BaseAssistant):
     """
-    Day 10 conversational Assistant.
+    Canonical conversational Assistant used by main.py.
 
-    Extends the existing Assistant with reusable conversation state and
-    contextual follow-up commands while preserving existing command
-    execution capabilities.
+    Extends the stable command-processing Assistant with the Day 8-10
+    conversation, confirmation, stop, and contextual follow-up layers.
     """
 
     def __init__(self, bridge):
@@ -130,9 +130,26 @@ class Assistant(BaseAssistant):
         return True
 
     def _execute_confirmed_action(self, action, action_data):
-        """Executes a confirmed action through one centralized dispatcher."""
+        """
+        Executes an already-confirmed system action.
+
+        Confirmation belongs to the conversation layer. The confirmed action
+        therefore executes directly here instead of asking for a second
+        console input inside the executor.
+        """
         if action == "shutdown":
-            return execute({"intent": "SYSTEM", "target": "shutdown"})
+            try:
+                subprocess.Popen(["shutdown", "/s", "/t", "5"])
+                return "Shutting down the computer in 5 seconds."
+            except OSError:
+                return "I couldn't shut down the computer."
+
+        if action == "restart":
+            try:
+                subprocess.Popen(["shutdown", "/r", "/t", "5"])
+                return "Restarting the computer in 5 seconds."
+            except OSError:
+                return "I couldn't restart the computer."
 
         return None
 
@@ -176,11 +193,23 @@ class Assistant(BaseAssistant):
         self.state_manager.set_state(JarvisState.IDLE)
         return True
 
-    def _start_shutdown_confirmation(self):
+    def _start_system_confirmation(self, target):
+        prompts = {
+            "shutdown": (
+                "Are you sure you want to shut down the computer?",
+                "Shutdown cancelled.",
+            ),
+            "restart": (
+                "Are you sure you want to restart the computer?",
+                "Restart cancelled.",
+            ),
+        }
+
+        prompt, cancel_response = prompts[target]
         return self.request_confirmation(
-            action="shutdown",
-            prompt="Are you sure you want to shut down the computer?",
-            cancel_response="Shutdown cancelled.",
+            action=target,
+            prompt=prompt,
+            cancel_response=cancel_response,
         )
 
     # ==================================================
@@ -268,14 +297,18 @@ class Assistant(BaseAssistant):
             return
 
         normalized = normalize(command).strip().lower()
-        if normalized in {
-            "shutdown",
-            "shut down",
-            "turn off the computer",
-            "turn off computer",
-        }:
+        system_targets = {
+            "shutdown": "shutdown",
+            "shut down": "shutdown",
+            "turn off the computer": "shutdown",
+            "turn off computer": "shutdown",
+            "restart": "restart",
+            "reboot": "restart",
+        }
+
+        if normalized in system_targets:
             self.state_manager.set_state(JarvisState.THINKING)
-            self._start_shutdown_confirmation()
+            self._start_system_confirmation(system_targets[normalized])
             return
 
         profile_name, remaining_command = extract_chrome_profile_command(command)
@@ -309,9 +342,6 @@ class Assistant(BaseAssistant):
                 self.request_chrome_profile()
                 return
 
-            # A media follow-up can inherit the last explicitly selected
-            # Chrome profile. This is what makes `play it again` and
-            # `play believer` after a profile selection conversational.
             if (
                 result["intent"] == "PLAY_MEDIA"
                 and not result.get("profile_directory")
