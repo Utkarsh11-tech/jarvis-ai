@@ -7,11 +7,22 @@ import openwakeword
 from openwakeword.model import Model
 import speech_recognition as sr
 
+# ==================================================
+# CONFIGURATION
+# ==================================================
+
 WAKE_WORD = "hey_jarvis"
 WAKE_THRESHOLD = 0.5
 
 SAMPLE_RATE = 16000
 CHUNK_SIZE = 1280
+
+# Maximum time JARVIS waits for the user to
+# START speaking after wake word detection.
+COMMAND_TIMEOUT = 5
+
+# Maximum length of a spoken command.
+COMMAND_PHRASE_TIME_LIMIT = 8
 
 
 class VoiceListener:
@@ -52,9 +63,9 @@ class VoiceListener:
 
         self._calibrate_microphone()
 
-    # ==========================================
+    # ==================================================
     # MICROPHONE CALIBRATION
-    # ==========================================
+    # ==================================================
 
     def _calibrate_microphone(self):
         """
@@ -72,9 +83,9 @@ class VoiceListener:
 
         print("JARVIS: Microphone ready.")
 
-    # ==========================================
+    # ==================================================
     # WAKE WORD STREAM
-    # ==========================================
+    # ==================================================
 
     def _start_wake_stream(self):
         """
@@ -112,9 +123,9 @@ class VoiceListener:
 
         self.wake_model.reset()
 
-    # ==========================================
+    # ==================================================
     # WAKE WORD DETECTION
-    # ==========================================
+    # ==================================================
 
     def listen_for_wake_word(self):
         """
@@ -127,9 +138,9 @@ class VoiceListener:
 
         while self.running:
 
-            # ----------------------------------
+            # ------------------------------------------
             # FOLLOW-UP INTERRUPTION
-            # ----------------------------------
+            # ------------------------------------------
 
             if self.follow_up_requested:
 
@@ -139,9 +150,9 @@ class VoiceListener:
 
                 return False
 
-            # ----------------------------------
+            # ------------------------------------------
             # READ MICROPHONE
-            # ----------------------------------
+            # ------------------------------------------
 
             audio_data = self.wake_stream.read(
                 CHUNK_SIZE,
@@ -172,38 +183,48 @@ class VoiceListener:
 
         return False
 
-    # ==========================================
+    # ==================================================
     # COMMAND LISTENING
-    # ==========================================
+    # ==================================================
 
     def listen_for_command(self):
         """
         Listens for a spoken command.
+
+        JARVIS waits COMMAND_TIMEOUT seconds for the
+        user to start speaking.
+
+        Once speech begins, JARVIS listens for a
+        maximum of COMMAND_PHRASE_TIME_LIMIT seconds.
         """
 
         if not self.running:
             return ""
 
-        with self.microphone as source:
+        print(f"JARVIS: Listening for command " f"(timeout: {COMMAND_TIMEOUT}s)...")
 
-            print("JARVIS: Listening...")
+        try:
 
-            try:
+            with self.microphone as source:
 
                 audio = self.recognizer.listen(
                     source,
-                    timeout=5,
-                    phrase_time_limit=8,
+                    timeout=COMMAND_TIMEOUT,
+                    phrase_time_limit=COMMAND_PHRASE_TIME_LIMIT,
                 )
 
-            except sr.WaitTimeoutError:
+        except sr.WaitTimeoutError:
 
-                print("JARVIS: I didn't hear a command.")
+            print("JARVIS: Command timeout.")
 
-                return ""
+            return ""
 
         if not self.running:
             return ""
+
+        # ==========================================
+        # SPEECH RECOGNITION
+        # ==========================================
 
         try:
 
@@ -227,9 +248,9 @@ class VoiceListener:
 
             return ""
 
-    # ==========================================
+    # ==================================================
     # REQUEST FOLLOW-UP
-    # ==========================================
+    # ==================================================
 
     def request_follow_up(self):
         """
@@ -239,9 +260,9 @@ class VoiceListener:
 
         self.follow_up_requested = True
 
-    # ==========================================
+    # ==================================================
     # PREPARE FOR NEXT WAKE WORD
-    # ==========================================
+    # ==================================================
 
     def prepare_for_wake_word(self):
         """
@@ -257,11 +278,12 @@ class VoiceListener:
         # Small cooldown prevents audio from the
         # previous interaction from immediately
         # triggering JARVIS.
+
         time.sleep(0.5)
 
-    # ==========================================
+    # ==================================================
     # STOP
-    # ==========================================
+    # ==================================================
 
     def stop(self):
         """
@@ -272,9 +294,9 @@ class VoiceListener:
 
         self._stop_wake_stream()
 
-    # ==========================================
+    # ==================================================
     # CLOSE
-    # ==========================================
+    # ==================================================
 
     def close(self):
         """

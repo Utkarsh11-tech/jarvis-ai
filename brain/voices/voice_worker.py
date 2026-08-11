@@ -3,8 +3,6 @@ import threading
 from PySide6.QtCore import QObject, Signal
 
 from brain.voices.listener import VoiceListener
-from bridge.bridge import JarvisBridge
-
 from brain.core.state import JarvisState
 
 
@@ -49,88 +47,107 @@ class VoiceWorker(QObject):
 
         self.listener = VoiceListener()
 
-        print(
-            "JARVIS Voice Worker is ready."
-        )
+        print("JARVIS Voice Worker is ready.")
 
         try:
 
             while self.running:
 
-                # ==================================
+                # ==========================================
                 # FOLLOW-UP INPUT
-                # ==================================
+                # ==========================================
 
                 if self.follow_up_requested.is_set():
 
                     self.follow_up_requested.clear()
 
-                    self.bridge.set_state(
-                        JarvisState.LISTENING.value
-                    )
+                    self.bridge.set_state(JarvisState.LISTENING.value)
 
-                    print(
-                        "JARVIS: Waiting for your response..."
-                    )
+                    print("JARVIS: Waiting for your response...")
 
-                    response = (
-                        self.listener.listen_for_command()
-                    )
+                    response = self.listener.listen_for_command()
 
-                    if response:
+                    # --------------------------------------
+                    # NO FOLLOW-UP RESPONSE
+                    # --------------------------------------
 
-                        self.command_received.emit(
-                            response
-                        )
+                    if not response:
+
+                        print("JARVIS: No response received.")
+
+                        self.bridge.set_state(JarvisState.IDLE.value)
+
+                        self.bridge.set_state(JarvisState.SLEEPING.value)
+
+                        continue
+
+                    # --------------------------------------
+                    # FOLLOW-UP RESPONSE RECEIVED
+                    # --------------------------------------
+
+                    self.command_received.emit(response)
 
                     continue
 
-                # ==================================
+                # ==========================================
                 # SLEEPING
-                # ==================================
+                # ==========================================
 
-                self.bridge.set_state(
-                    JarvisState.SLEEPING.value
-                )
+                self.bridge.set_state(JarvisState.SLEEPING.value)
 
-                awakened = (
-                    self.listener.listen_for_wake_word()
-                )
+                awakened = self.listener.listen_for_wake_word()
 
                 if not awakened:
+                    continue
+
+                # ==========================================
+                # WAKE DETECTED
+                # ==========================================
+
+                self.bridge.wake_detected_event()
+
+                # ==========================================
+                # LISTENING FOR COMMAND
+                # ==========================================
+
+                self.bridge.set_state(JarvisState.LISTENING.value)
+
+                print("JARVIS: Waiting for your command...")
+
+                command = self.listener.listen_for_command()
+
+                # ==========================================
+                # COMMAND TIMEOUT / EMPTY COMMAND
+                # ==========================================
+
+                if not command:
+
+                    print("JARVIS: No command received.")
+
+                    # Explicitly leave LISTENING.
+                    self.bridge.set_state(JarvisState.IDLE.value)
+
+                    self.bridge.set_state(JarvisState.SLEEPING.value)
+
+                    self.listener.prepare_for_wake_word()
 
                     continue
 
-                self.bridge.wake_detected_event()
-                
-                # ==================================
-                # LISTENING
-                # ==================================
+                # ==========================================
+                # COMMAND RECEIVED
+                # ==========================================
 
-                self.bridge.set_state(
-                    JarvisState.LISTENING.value
-                )
+                self.command_received.emit(command)
 
-                command = (
-                    self.listener.listen_for_command()
-                )
-
-                if command:
-
-                    self.command_received.emit(
-                        command
-                    )
-
-                # ==================================
+                # ==========================================
                 # PREPARE FOR NEXT WAKE WORD
-                # ==================================
+                # ==========================================
 
                 self.listener.prepare_for_wake_word()
 
         finally:
 
             if self.listener:
-
                 self.listener.close()
 
             self.finished.emit()
@@ -149,5 +166,4 @@ class VoiceWorker(QObject):
         self.follow_up_requested.set()
 
         if self.listener:
-
             self.listener.stop()
