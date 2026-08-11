@@ -5,7 +5,7 @@ from PySide6.QtWidgets import QApplication
 
 from bridge.bridge import JarvisBridge
 
-from brain.core.assistant import Assistant
+from brain.core.assistant_v2 import Assistant
 from brain.voices.voice_worker import VoiceWorker
 
 from body.app.screens.home.home_screen import MainWindow
