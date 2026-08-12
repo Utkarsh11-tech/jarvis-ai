@@ -1,6 +1,5 @@
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
-    QApplication,
     QFrame,
     QHBoxLayout,
     QLayout,
@@ -44,46 +43,30 @@ class ConversationWidget(QWidget):
         self.toolbar_layout.setContentsMargins(10, 6, 10, 6)
         self.toolbar_layout.setSpacing(7)
 
+        # Compact search icon. The actual search field stays hidden
+        # until the user explicitly opens it.
+        self.search_button = QPushButton("⌕")
+        self.search_button.setObjectName("searchButton")
+        self.search_button.setFixedSize(34, 30)
+        self.search_button.setToolTip("Search conversation")
+        self.search_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.search_button.clicked.connect(self.toggle_search)
+
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search conversation...")
         self.search_input.setClearButtonEnabled(True)
         self.search_input.textChanged.connect(self.filter_messages)
+        self.search_input.setVisible(False)
 
         self.clear_button = QPushButton("Clear")
         self.clear_button.setFixedWidth(70)
         self.clear_button.clicked.connect(self.clear_conversation)
 
+        self.toolbar_layout.addWidget(self.search_button)
         self.toolbar_layout.addWidget(self.search_input, 1)
         self.toolbar_layout.addWidget(self.clear_button)
 
         self.main_layout.addWidget(self.toolbar)
-
-        # ==========================================
-        # QUICK ACTIONS
-        # ==========================================
-
-        self.quick_actions_frame = QFrame()
-        self.quick_actions_layout = QHBoxLayout(self.quick_actions_frame)
-        self.quick_actions_layout.setContentsMargins(10, 0, 10, 0)
-        self.quick_actions_layout.setSpacing(7)
-
-        quick_actions = [
-            ("Open Chrome", "open chrome"),
-            ("Play Music", "play music"),
-            ("Search Google", "search google"),
-            ("Open Notepad", "open notepad"),
-        ]
-
-        for label, command in quick_actions:
-            button = QPushButton(label)
-            button.setCursor(Qt.CursorShape.PointingHandCursor)
-            button.clicked.connect(
-                lambda checked=False, value=command, text=label:
-                self.run_quick_action(value, text)
-            )
-            self.quick_actions_layout.addWidget(button)
-
-        self.main_layout.addWidget(self.quick_actions_frame)
 
         # ==========================================
         # NOTIFICATION
@@ -143,6 +126,12 @@ class ConversationWidget(QWidget):
                 background-color: #061522;
                 color: #FFFFFF;
                 border: 1px solid #00D9FF;
+            }
+
+            QPushButton#searchButton {
+                font-size: 19px;
+                font-weight: 400;
+                padding: 0px;
             }
 
             QLabel#conversationNotification {
@@ -293,6 +282,24 @@ class ConversationWidget(QWidget):
         self._scroll_to_bottom_after_layout()
 
     # ==================================================
+    # SEARCH TOGGLE
+    # ==================================================
+
+    def toggle_search(self):
+        visible = self.search_input.isVisible()
+
+        if visible:
+            self.search_input.clear()
+            self.search_input.setVisible(False)
+            self.search_button.setToolTip("Search conversation")
+            self.search_button.setFocus()
+            return
+
+        self.search_input.setVisible(True)
+        self.search_input.setFocus()
+        self.search_button.setToolTip("Close search")
+
+    # ==================================================
     # SEARCH
     # ==================================================
 
@@ -315,21 +322,6 @@ class ConversationWidget(QWidget):
         self.messages.clear()
         self.search_input.clear()
         self.show_notification("Conversation cleared")
-
-    # ==================================================
-    # QUICK ACTIONS
-    # ==================================================
-
-    def run_quick_action(self, command, label):
-        self.add_user_message(command)
-        self.show_notification("✓ " + label + " command queued")
-
-        window = QApplication.activeWindow()
-
-        if window is not None and hasattr(window, "bridge"):
-            window.bridge.send_command(command)
-        else:
-            self.show_notification("✕ JARVIS window is unavailable")
 
     # ==================================================
     # NOTIFICATION
