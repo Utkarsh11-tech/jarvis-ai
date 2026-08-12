@@ -90,6 +90,7 @@ class ConversationWidget(QWidget):
         # ==========================================
 
         self.notification = QLabel()
+        self.notification.setObjectName("conversationNotification")
         self.notification.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.notification.setVisible(False)
         self.main_layout.addWidget(self.notification)
@@ -253,7 +254,24 @@ class ConversationWidget(QWidget):
 
     def add_jarvis_message(self, message):
         self._add_message(message, False)
-        self.show_notification("✓ " + message)
+
+        lowered = message.lower()
+
+        error_terms = (
+            "error",
+            "unavailable",
+            "couldn't",
+            "could not",
+            "cannot",
+            "failed",
+            "failure",
+            "unable",
+        )
+
+        if any(term in lowered for term in error_terms):
+            self.show_notification("✕ " + message)
+        else:
+            self.show_notification("✓ " + message)
 
     # ==================================================
     # ADD MESSAGE
@@ -310,13 +328,14 @@ class ConversationWidget(QWidget):
 
         if window is not None and hasattr(window, "bridge"):
             window.bridge.send_command(command)
+        else:
+            self.show_notification("✕ JARVIS window is unavailable")
 
     # ==================================================
     # NOTIFICATION
     # ==================================================
 
     def show_notification(self, message):
-        self.notification.setObjectName("conversationNotification")
         self.notification.setText(message)
         self.notification.setVisible(True)
         self.notification_timer.start(2200)
