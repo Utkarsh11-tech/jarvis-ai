@@ -1,7 +1,7 @@
 import math
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QPainter, QColor, QPen
+from PySide6.QtGui import QPainter, QColor, QPen, QFont
 from PySide6.QtWidgets import QApplication, QWidget
 
 
@@ -36,23 +36,33 @@ class JarvisOverlay(QWidget):
         # SIZE
         # ==========================================
 
-        self.setFixedSize(
-            430,
-            210
-        )
+        self.setFixedSize(430, 210)
+
+        # ==========================================
+        # STATE / STATUS
+        # ==========================================
+
+        self.audio_level = 0.0
+        self.phase = 0.0
+        self.status_text = "Listening..."
 
         # ==========================================
         # ANIMATION
         # ==========================================
 
-        self.audio_level = 0.0
-        self.phase = 0.0
-
         self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_animation)
 
-        self.timer.timeout.connect(
-            self.update_animation
-        )
+    # ==========================================
+    # STATUS
+    # ==========================================
+
+    def set_status(self, status):
+        """Updates the short status shown on the overlay."""
+
+        status = str(status).strip()
+        self.status_text = status or "Listening..."
+        self.update()
 
     # ==========================================
     # SHOW OVERLAY
@@ -71,10 +81,7 @@ class JarvisOverlay(QWidget):
 
             x = (
                 geometry.x()
-                + (
-                    geometry.width()
-                    - self.width()
-                ) // 2
+                + (geometry.width() - self.width()) // 2
             )
 
             y = (
@@ -84,14 +91,10 @@ class JarvisOverlay(QWidget):
                 - 80
             )
 
-            self.move(
-                x,
-                y
-            )
+            self.move(x, y)
 
         self.show()
         self.raise_()
-
         self.timer.start(16)
 
     # ==========================================
@@ -101,7 +104,6 @@ class JarvisOverlay(QWidget):
     def hide_overlay(self):
 
         self.timer.stop()
-
         self.hide()
 
     # ==========================================
@@ -112,10 +114,7 @@ class JarvisOverlay(QWidget):
 
         self.audio_level = max(
             0.0,
-            min(
-                1.0,
-                float(level)
-            )
+            min(1.0, float(level))
         )
 
         self.update()
@@ -149,7 +148,7 @@ class JarvisOverlay(QWidget):
         height = self.height()
 
         center_x = width // 2
-        center_y = height // 2
+        center_y = 82
 
         # ==========================================
         # SUBTLE GLOW
@@ -169,13 +168,8 @@ class JarvisOverlay(QWidget):
 
             painter.setPen(
                 QPen(
-                    QColor(
-                        0,
-                        210,
-                        255,
-                        alpha
-                    ),
-                    2
+                    QColor(0, 210, 255, alpha),
+                    2,
                 )
             )
 
@@ -183,71 +177,44 @@ class JarvisOverlay(QWidget):
                 int(center_x - radius),
                 int(center_y - radius),
                 int(radius * 2),
-                int(radius * 2)
+                int(radius * 2),
             )
 
         # ==========================================
         # WAVEFORM
         # ==========================================
 
-        pen = QPen(
-            QColor(
-                0,
-                220,
-                255,
-                230
-            ),
-            2
+        painter.setPen(
+            QPen(
+                QColor(0, 220, 255, 230),
+                2,
+            )
         )
 
-        painter.setPen(pen)
-
         points = 80
-
         previous_x = 0
         previous_y = center_y
 
         for i in range(points):
 
-            x = (
-                i
-                * width
-                / (points - 1)
-            )
+            x = i * width / (points - 1)
+            normalized = i / (points - 1)
 
-            normalized = (
-                i / (points - 1)
-            )
-
-            envelope = math.sin(
-                normalized * math.pi
-            )
-
+            envelope = math.sin(normalized * math.pi)
             wave = math.sin(
-                normalized * math.pi * 10
-                + self.phase
+                normalized * math.pi * 10 + self.phase
             )
 
-            # Controlled voice reaction
-            amplitude = (
-                3
-                + self.audio_level * 22
-            )
+            amplitude = 3 + self.audio_level * 22
 
-            y = (
-                center_y
-                + wave
-                * amplitude
-                * envelope
-            )
+            y = center_y + wave * amplitude * envelope
 
             if i > 0:
-
                 painter.drawLine(
                     int(previous_x),
                     int(previous_y),
                     int(x),
-                    int(y)
+                    int(y),
                 )
 
             previous_x = x
@@ -257,36 +224,41 @@ class JarvisOverlay(QWidget):
         # CENTER CORE
         # ==========================================
 
-        core_radius = (
-            7
-            + self.audio_level * 6
-        )
+        core_radius = 7 + self.audio_level * 6
 
         painter.setPen(
             QPen(
-                QColor(
-                    0,
-                    230,
-                    255,
-                    240
-                ),
-                2
+                QColor(0, 230, 255, 240),
+                2,
             )
         )
 
         painter.drawEllipse(
-            int(
-                center_x - core_radius
-            ),
-            int(
-                center_y - core_radius
-            ),
-            int(
-                core_radius * 2
-            ),
-            int(
-                core_radius * 2
-            )
+            int(center_x - core_radius),
+            int(center_y - core_radius),
+            int(core_radius * 2),
+            int(core_radius * 2),
+        )
+
+        # ==========================================
+        # STATUS
+        # ==========================================
+
+        painter.setPen(
+            QColor(190, 240, 255, 235)
+        )
+
+        status_font = QFont("Arial", 11)
+        status_font.setBold(True)
+        painter.setFont(status_font)
+
+        painter.drawText(
+            20,
+            145,
+            width - 40,
+            28,
+            Qt.AlignmentFlag.AlignCenter,
+            self.status_text,
         )
 
         # ==========================================
@@ -294,13 +266,12 @@ class JarvisOverlay(QWidget):
         # ==========================================
 
         painter.setPen(
-            QColor(
-                190,
-                240,
-                255,
-                210
-            )
+            QColor(120, 200, 225, 180)
         )
+
+        label_font = QFont("Arial", 9)
+        label_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 3)
+        painter.setFont(label_font)
 
         painter.drawText(
             0,
@@ -308,5 +279,5 @@ class JarvisOverlay(QWidget):
             width,
             20,
             Qt.AlignmentFlag.AlignCenter,
-            "J.A.R.V.I.S"
+            "J.A.R.V.I.S",
         )
