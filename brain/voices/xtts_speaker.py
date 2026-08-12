@@ -1,5 +1,4 @@
 import json
-import os
 import subprocess
 import threading
 from pathlib import Path
@@ -27,34 +26,9 @@ OUTPUT_DIR = (
     / "jarvis voice"
 )
 
-# FFmpeg shared build required by TorchCodec on Windows.
-FFMPEG_BIN = Path(
-    r"C:\ffmpeg-shared\ffmpeg-8.1.2-full_build-shared\bin"
-)
-
 
 _process = None
 _lock = threading.Lock()
-
-
-def _get_service_environment():
-    """
-    Build the environment used by the XTTS service.
-
-    TorchCodec needs the FFmpeg shared DLLs to be discoverable
-    when the XTTS Python process starts.
-    """
-
-    env = os.environ.copy()
-
-    if FFMPEG_BIN.exists():
-        env["PATH"] = (
-            str(FFMPEG_BIN)
-            + os.pathsep
-            + env.get("PATH", "")
-        )
-
-    return env
 
 
 def _start_service():
@@ -63,21 +37,6 @@ def _start_service():
     if _process is not None:
         if _process.poll() is None:
             return
-
-    if not SERVICE_PYTHON.exists():
-        raise FileNotFoundError(
-            f"XTTS Python executable not found: {SERVICE_PYTHON}"
-        )
-
-    if not SERVICE_SCRIPT.exists():
-        raise FileNotFoundError(
-            f"XTTS service script not found: {SERVICE_SCRIPT}"
-        )
-
-    if not FFMPEG_BIN.exists():
-        raise FileNotFoundError(
-            f"FFmpeg shared DLL directory not found: {FFMPEG_BIN}"
-        )
 
     _process = subprocess.Popen(
         [
@@ -89,7 +48,6 @@ def _start_service():
         stderr=None,
         text=True,
         bufsize=1,
-        env=_get_service_environment(),
     )
 
     ready_line = _process.stdout.readline().strip()
@@ -107,7 +65,23 @@ def _start_service():
         )
 
 
-def _generate(text: str, output_path: Path):
+def initialize_xtts() -> None:
+    """
+    Starts the persistent XTTS service during
+    JARVIS startup.
+
+    The service remains alive and is reused for
+    subsequent speech requests.
+    """
+
+    with _lock:
+        _start_service()
+
+
+def _generate(
+    text: str,
+    output_path: Path,
+):
     request = {
         "command": "speak",
         "text": text,
@@ -137,7 +111,9 @@ def _generate(text: str, output_path: Path):
         )
 
 
-def _play_audio(output_path: Path):
+def _play_audio(
+    output_path: Path,
+):
     subprocess.run(
         [
             "ffplay",
@@ -148,13 +124,15 @@ def _play_audio(output_path: Path):
             str(output_path),
         ],
         check=True,
-        env=_get_service_environment(),
     )
 
 
-def speak_xtts(text: str) -> None:
+def speak_xtts(
+    text: str,
+) -> None:
     """
-    Generate and play speech using the persistent XTTS v2 service.
+    Generate and play speech using the persistent
+    XTTS v2 service.
     """
 
     if not text:
@@ -180,5 +158,5 @@ def speak_xtts(text: str) -> None:
         )
 
         _play_audio(
-            output_path
+            output_path,
         )
