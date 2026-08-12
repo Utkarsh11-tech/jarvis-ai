@@ -30,6 +30,20 @@ def main():
     # ================================================
 
     window = MainWindow(bridge)
+
+    # Voice-recognized commands use the same conversation UI
+    # as typed commands. Keeping this connection at the application
+    # boundary avoids coupling the voice worker to the UI widgets.
+    bridge.transcript_received.connect(
+        window.chat.add_user_message
+    )
+
+    # The overlay owns its presentation, while the bridge owns
+    # the event flow. This keeps the voice worker UI-agnostic.
+    bridge.overlay_status_changed.connect(
+        window.overlay.set_status
+    )
+
     window.show()
 
     # ================================================
