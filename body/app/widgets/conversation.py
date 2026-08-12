@@ -40,30 +40,34 @@ class ConversationWidget(QWidget):
         self.toolbar.setObjectName("conversationToolbar")
 
         self.toolbar_layout = QHBoxLayout(self.toolbar)
-        self.toolbar_layout.setContentsMargins(10, 6, 10, 6)
-        self.toolbar_layout.setSpacing(7)
+        self.toolbar_layout.setContentsMargins(0, 0, 0, 0)
+        self.toolbar_layout.setSpacing(0)
 
-        # Compact search icon. The actual search field stays hidden
-        # until the user explicitly opens it.
+        # Compact search icon on the left corner.
         self.search_button = QPushButton("⌕")
         self.search_button.setObjectName("searchButton")
-        self.search_button.setFixedSize(34, 30)
+        self.search_button.setFixedSize(42, 34)
         self.search_button.setToolTip("Search conversation")
         self.search_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.search_button.clicked.connect(self.toggle_search)
 
         self.search_input = QLineEdit()
+        self.search_input.setObjectName("conversationSearchInput")
         self.search_input.setPlaceholderText("Search conversation...")
         self.search_input.setClearButtonEnabled(True)
         self.search_input.textChanged.connect(self.filter_messages)
         self.search_input.setVisible(False)
+        self.search_input.setFixedHeight(34)
 
+        # Clear conversation button on the right corner.
         self.clear_button = QPushButton("Clear")
-        self.clear_button.setFixedWidth(70)
+        self.clear_button.setObjectName("clearButton")
+        self.clear_button.setFixedSize(72, 34)
         self.clear_button.clicked.connect(self.clear_conversation)
 
         self.toolbar_layout.addWidget(self.search_button)
         self.toolbar_layout.addWidget(self.search_input, 1)
+        self.toolbar_layout.addStretch(1)
         self.toolbar_layout.addWidget(self.clear_button)
 
         self.main_layout.addWidget(self.toolbar)
@@ -95,20 +99,22 @@ class ConversationWidget(QWidget):
 
             QFrame#conversationToolbar {
                 background-color: #02070D;
-                border: 1px solid #126486;
-                border-radius: 8px;
+                border: none;
+                border-radius: 0px;
             }
 
-            QLineEdit {
+            QLineEdit#conversationSearchInput {
                 background-color: #030A12;
                 color: #DDEFFF;
                 border: 1px solid #126486;
-                border-radius: 7px;
-                padding: 7px 10px;
+                border-radius: 6px;
+                padding: 6px 10px;
                 font-size: 11px;
+                selection-background-color: #126486;
+                selection-color: #FFFFFF;
             }
 
-            QLineEdit:focus {
+            QLineEdit#conversationSearchInput:focus {
                 border: 1px solid #00D9FF;
             }
 
@@ -116,7 +122,7 @@ class ConversationWidget(QWidget):
                 background-color: #030A12;
                 color: #8EDFFF;
                 border: 1px solid #126486;
-                border-radius: 7px;
+                border-radius: 6px;
                 padding: 7px 10px;
                 font-size: 10px;
                 font-weight: 600;
@@ -132,6 +138,11 @@ class ConversationWidget(QWidget):
                 font-size: 19px;
                 font-weight: 400;
                 padding: 0px;
+                border-radius: 6px;
+            }
+
+            QPushButton#clearButton {
+                border-radius: 6px;
             }
 
             QLabel#conversationNotification {
