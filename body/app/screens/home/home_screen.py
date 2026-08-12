@@ -5,6 +5,8 @@ from PySide6.QtGui import (
     QColor,
     QRadialGradient,
     QLinearGradient,
+    QIcon,
+    QPixmap,
 )
 
 from PySide6.QtWidgets import (
@@ -13,6 +15,8 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QVBoxLayout,
     QWidget,
+    QSystemTrayIcon,
+    QMenu,
 )
 
 from body.app.widgets.overlay import JarvisOverlay
@@ -743,6 +747,14 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         # ==========================================
+        # SYSTEM TRAY
+        # ==========================================
+
+        self.tray_icon = None
+        self.tray_menu = None
+        self._exiting = False
+
+        # ==========================================
         # WINDOW
         # ==========================================
 
@@ -1046,6 +1058,247 @@ class MainWindow(QMainWindow):
 
         self.profile_selector = None
 
+        # ==========================================
+        # SYSTEM TRAY
+        # ==========================================
+
+        self.setup_system_tray()
+
+    # ==================================================
+    # SYSTEM TRAY SETUP
+    # ==================================================
+
+    def setup_system_tray(self):
+
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+
+        # ==========================================
+        # CREATE TRAY ICON
+        # ==========================================
+
+        pixmap = QPixmap(
+            64,
+            64,
+        )
+
+        pixmap.fill(
+            Qt.GlobalColor.transparent
+        )
+
+        painter = QPainter(
+            pixmap
+        )
+
+        painter.setRenderHint(
+            QPainter.RenderHint.Antialiasing
+        )
+
+        # Outer orb
+        painter.setPen(
+            QPen(
+                QColor(
+                    0,
+                    217,
+                    255,
+                    190,
+                ),
+                3,
+            )
+        )
+
+        painter.setBrush(
+            QColor(
+                2,
+                15,
+                25,
+            )
+        )
+
+        painter.drawEllipse(
+            8,
+            8,
+            48,
+            48,
+        )
+
+        # Inner orb
+        painter.setPen(
+            QPen(
+                QColor(
+                    0,
+                    217,
+                    255,
+                    220,
+                ),
+                2,
+            )
+        )
+
+        painter.setBrush(
+            QColor(
+                0,
+                120,
+                180,
+            )
+        )
+
+        painter.drawEllipse(
+            18,
+            18,
+            28,
+            28,
+        )
+
+        painter.end()
+
+        self.tray_icon = QSystemTrayIcon(
+            QIcon(pixmap),
+            self,
+        )
+
+        self.tray_icon.setToolTip(
+            "J.A.R.V.I.S"
+        )
+
+        # ==========================================
+        # TRAY MENU
+        # ==========================================
+
+        self.tray_menu = QMenu()
+
+        open_action = self.tray_menu.addAction(
+            "Open J.A.R.V.I.S"
+        )
+
+        open_action.triggered.connect(
+            self.restore_from_tray
+        )
+
+        listen_action = self.tray_menu.addAction(
+            "Start Listening"
+        )
+
+        listen_action.triggered.connect(
+            self.start_listening_from_tray
+        )
+
+        self.tray_menu.addSeparator()
+
+        exit_action = self.tray_menu.addAction(
+            "Exit J.A.R.V.I.S"
+        )
+
+        exit_action.triggered.connect(
+            self.exit_from_tray
+        )
+
+        self.tray_icon.setContextMenu(
+            self.tray_menu
+        )
+
+        # ==========================================
+        # TRAY ACTIVATION
+        # ==========================================
+
+        self.tray_icon.activated.connect(
+            self.handle_tray_activation
+        )
+
+        self.tray_icon.show()
+
+    # ==================================================
+    # RESTORE FROM TRAY
+    # ==================================================
+
+    def restore_from_tray(self):
+
+        self.show()
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    # ==================================================
+    # START LISTENING FROM TRAY
+    # ==================================================
+
+    def start_listening_from_tray(self):
+
+        self.restore_from_tray()
+
+        if self.orb.state in (
+            OrbState.IDLE,
+            OrbState.SLEEPING,
+        ):
+
+            self.toggle_listening()
+
+    # ==================================================
+    # HANDLE TRAY ACTIVATION
+    # ==================================================
+
+    def handle_tray_activation(
+        self,
+        reason,
+    ):
+
+        if (
+            reason
+            == QSystemTrayIcon.ActivationReason.Trigger
+        ):
+
+            self.restore_from_tray()
+
+        elif (
+            reason
+            == QSystemTrayIcon.ActivationReason.DoubleClick
+        ):
+
+            self.restore_from_tray()
+
+    # ==================================================
+    # CLOSE WINDOW
+    # ==================================================
+
+    def closeEvent(
+        self,
+        event,
+    ):
+
+        if self._exiting:
+            event.accept()
+            return
+
+        if self.tray_icon is not None:
+
+            self.hide()
+
+            self.tray_icon.showMessage(
+                "J.A.R.V.I.S",
+                "JARVIS is still running in the system tray.",
+                QSystemTrayIcon.MessageIcon.Information,
+                2000,
+            )
+
+            event.ignore()
+
+        else:
+
+            event.accept()
+
+    # ==================================================
+    # EXIT FROM TRAY
+    # ==================================================
+
+    def exit_from_tray(self):
+
+        self._exiting = True
+
+        if self.tray_icon is not None:
+            self.tray_icon.hide()
+
+        QApplication.quit()
+
     # ==================================================
     # RESIZE HUD
     # ==================================================
@@ -1134,18 +1387,25 @@ class MainWindow(QMainWindow):
     # ==================================================
 
     def show_wake_overlay(self):
+
         active_window = QApplication.activeWindow()
 
-        # Keep the main JARVIS interface uncluttered. The floating indicator
-        # is only useful when the user is interacting with another app.
+        # Keep the main JARVIS interface uncluttered.
+        # The floating indicator is only useful when
+        # the user is interacting with another app.
+
         if (
             active_window is self
             or (
                 active_window is not None
-                and self.isAncestorOf(active_window)
+                and self.isAncestorOf(
+                    active_window
+                )
             )
         ):
+
             self.overlay.hide_overlay()
+
             return
 
         self.overlay.show_overlay()
@@ -1242,3 +1502,8 @@ class MainWindow(QMainWindow):
         self.chat.add_jarvis_message(
             response
         )
+
+
+# ==================================================
+# END OF FILE
+# ==================================================
