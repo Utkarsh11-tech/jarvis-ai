@@ -1,6 +1,14 @@
 import sys
+import ctypes
 
-from PySide6.QtCore import QThread, Qt
+from ctypes import wintypes
+
+from PySide6.QtCore import (
+    QThread,
+    Qt,
+    QAbstractNativeEventFilter,
+)
+
 from PySide6.QtWidgets import QApplication
 
 from bridge.bridge import JarvisBridge
@@ -11,13 +19,213 @@ from brain.voices.voice_worker import VoiceWorker
 from body.app.screens.home.home_screen import MainWindow
 
 
+# ==================================================
+# WINDOWS MSG STRUCTURE
+# ==================================================
+
+
+class MSG(ctypes.Structure):
+
+    _fields_ = [
+        (
+            "hwnd",
+            wintypes.HWND,
+        ),
+        (
+            "message",
+            wintypes.UINT,
+        ),
+        (
+            "wParam",
+            wintypes.WPARAM,
+        ),
+        (
+            "lParam",
+            wintypes.LPARAM,
+        ),
+        (
+            "time",
+            wintypes.DWORD,
+        ),
+        (
+            "pt_x",
+            wintypes.LONG,
+        ),
+        (
+            "pt_y",
+            wintypes.LONG,
+        ),
+    ]
+
+
+# ==================================================
+# GLOBAL HOTKEY
+# ==================================================
+
+
+class GlobalHotkeyFilter(
+    QAbstractNativeEventFilter
+):
+
+    WM_HOTKEY = 0x0312
+
+    MOD_CONTROL = 0x0002
+
+    VK_SPACE = 0x20
+
+    HOTKEY_ID = 1
+
+    def __init__(
+        self,
+        callback,
+    ):
+
+        super().__init__()
+
+        self.callback = callback
+
+        self.registered = False
+
+        self.register_hotkey()
+
+    # ==================================================
+    # REGISTER
+    # ==================================================
+
+    def register_hotkey(self):
+
+        if sys.platform != "win32":
+
+            print(
+                "JARVIS: Global hotkey is "
+                "only supported on Windows."
+            )
+
+            return
+
+        result = (
+            ctypes.windll.user32.RegisterHotKey(
+                None,
+                self.HOTKEY_ID,
+                self.MOD_CONTROL,
+                self.VK_SPACE,
+            )
+        )
+
+        if result:
+
+            self.registered = True
+
+            print(
+                "JARVIS: Global shortcut registered "
+                "(Ctrl + Space)"
+            )
+
+        else:
+
+            error_code = (
+                ctypes.windll.kernel32.GetLastError()
+            )
+
+            print(
+                "JARVIS: Failed to register "
+                "Ctrl + Space."
+            )
+
+            print(
+                f"JARVIS: Windows error code: "
+                f"{error_code}"
+            )
+
+    # ==================================================
+    # NATIVE EVENT FILTER
+    # ==================================================
+
+    def nativeEventFilter(
+        self,
+        eventType,
+        message,
+    ):
+
+        if sys.platform != "win32":
+
+            return False, 0
+
+        if eventType != "windows_generic_MSG":
+
+            return False, 0
+
+        try:
+
+            msg = ctypes.cast(
+                int(message),
+                ctypes.POINTER(MSG),
+            ).contents
+
+        except Exception as error:
+
+            print(
+                "JARVIS: Failed to read "
+                f"Windows message: {error}"
+            )
+
+            return False, 0
+
+        if (
+            msg.message
+            == self.WM_HOTKEY
+            and msg.wParam
+            == self.HOTKEY_ID
+        ):
+
+            print(
+                "JARVIS: Ctrl + Space detected."
+            )
+
+            self.callback()
+
+            return True, 0
+
+        return False, 0
+
+    # ==================================================
+    # UNREGISTER
+    # ==================================================
+
+    def unregister_hotkey(self):
+
+        if (
+            sys.platform == "win32"
+            and self.registered
+        ):
+
+            ctypes.windll.user32.UnregisterHotKey(
+                None,
+                self.HOTKEY_ID,
+            )
+
+            self.registered = False
+
+            print(
+                "JARVIS: Global shortcut "
+                "unregistered."
+            )
+
+
+# ==================================================
+# MAIN
+# ==================================================
+
+
 def main():
 
     # ================================================
     # APPLICATION
     # ================================================
 
-    app = QApplication(sys.argv)
+    app = QApplication(
+        sys.argv
+    )
 
     # ================================================
     # SHARED BRIDGE
@@ -29,50 +237,93 @@ def main():
     # BODY
     # ================================================
 
-    window = MainWindow(bridge)
+    window = MainWindow(
+        bridge
+    )
 
-    # Voice-recognized commands use the same conversation UI
-    # as typed commands. Keeping this connection at the application
-    # boundary avoids coupling the voice worker to the UI widgets.
+    # ================================================
+    # GLOBAL HOTKEY
+    # ================================================
+
+    hotkey_filter = GlobalHotkeyFilter(
+        window.toggle_listening
+    )
+
+    app.installNativeEventFilter(
+        hotkey_filter
+    )
+
+    # ================================================
+    # VOICE → CONVERSATION UI
+    # ================================================
+
     bridge.transcript_received.connect(
         window.chat.add_user_message
     )
 
-    # The overlay owns its presentation, while the bridge owns
-    # the event flow. This keeps the voice worker UI-agnostic.
+    # ================================================
+    # OVERLAY STATUS
+    # ================================================
+
     bridge.overlay_status_changed.connect(
         window.overlay.set_status
     )
 
-    # Keep the floating overlay useful during the complete interaction,
-    # not only the initial listening state. The home screen still controls
-    # its normal wake-word lifecycle; these updates add the processing and
-    # speaking states without changing the existing voice pipeline.
-    def update_overlay_for_state(state):
-        normalized = str(state).lower()
+    # ================================================
+    # OVERLAY STATE UPDATES
+    # ================================================
+
+    def update_overlay_for_state(
+        state,
+    ):
+
+        normalized = str(
+            state
+        ).lower()
 
         if normalized == "thinking":
-            window.overlay.set_status("Processing...")
+
+            window.overlay.set_status(
+                "Processing..."
+            )
+
             window.show_wake_overlay()
 
         elif normalized == "executing":
-            window.overlay.set_status("Processing...")
+
+            window.overlay.set_status(
+                "Processing..."
+            )
+
             window.show_wake_overlay()
 
         elif normalized == "speaking":
-            window.overlay.set_status("Speaking...")
+
+            window.overlay.set_status(
+                "Speaking..."
+            )
+
             window.show_wake_overlay()
 
         elif normalized == "error":
-            window.overlay.set_status("Error")
+
+            window.overlay.set_status(
+                "Error"
+            )
+
             window.show_wake_overlay()
 
         elif normalized == "sleeping":
+
             window.overlay.hide_overlay()
 
     bridge.state_changed.connect(
         update_overlay_for_state
     )
+
+    # ================================================
+    # SHOW APPLICATION
+    # ================================================
 
     window.show()
 
@@ -80,11 +331,15 @@ def main():
     # BRAIN
     # ================================================
 
-    assistant = Assistant(bridge)
+    assistant = Assistant(
+        bridge
+    )
 
     brain_thread = QThread()
 
-    assistant.moveToThread(brain_thread)
+    assistant.moveToThread(
+        brain_thread
+    )
 
     brain_thread.started.connect(
         assistant.run
@@ -96,7 +351,9 @@ def main():
     # VOICE WORKER
     # ================================================
 
-    voice_worker = VoiceWorker(bridge)
+    voice_worker = VoiceWorker(
+        bridge
+    )
 
     voice_thread = QThread()
 
@@ -114,7 +371,7 @@ def main():
 
     # --------------------------------
     # Bridge → Voice Worker
-    # Request one-time follow-up input
+    # Follow-up input
     # --------------------------------
 
     bridge.voice_input_requested.connect(
@@ -146,6 +403,8 @@ def main():
     # SHUTDOWN
     # ================================================
 
+    hotkey_filter.unregister_hotkey()
+
     voice_worker.stop()
 
     voice_thread.quit()
@@ -154,8 +413,16 @@ def main():
     brain_thread.quit()
     brain_thread.wait()
 
-    sys.exit(exit_code)
+    sys.exit(
+        exit_code
+    )
+
+
+# ==================================================
+# ENTRY POINT
+# ==================================================
 
 
 if __name__ == "__main__":
+
     main()
