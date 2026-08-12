@@ -62,6 +62,7 @@ class VoiceWorker(QObject):
                     self.follow_up_requested.clear()
 
                     self.bridge.set_state(JarvisState.LISTENING.value)
+                    self.bridge.set_overlay_status("Listening...")
 
                     print("JARVIS: Waiting for your response...")
 
@@ -76,7 +77,6 @@ class VoiceWorker(QObject):
                         print("JARVIS: No response received.")
 
                         self.bridge.set_state(JarvisState.IDLE.value)
-
                         self.bridge.set_state(JarvisState.SLEEPING.value)
 
                         continue
@@ -85,6 +85,8 @@ class VoiceWorker(QObject):
                     # FOLLOW-UP RESPONSE RECEIVED
                     # --------------------------------------
 
+                    self.bridge.send_transcript(response)
+                    self.bridge.set_overlay_status(response)
                     self.command_received.emit(response)
 
                     continue
@@ -94,6 +96,7 @@ class VoiceWorker(QObject):
                 # ==========================================
 
                 self.bridge.set_state(JarvisState.SLEEPING.value)
+                self.bridge.set_overlay_status("Sleeping")
 
                 awakened = self.listener.listen_for_wake_word()
 
@@ -111,6 +114,7 @@ class VoiceWorker(QObject):
                 # ==========================================
 
                 self.bridge.set_state(JarvisState.LISTENING.value)
+                self.bridge.set_overlay_status("Listening...")
 
                 print("JARVIS: Waiting for your command...")
 
@@ -124,10 +128,9 @@ class VoiceWorker(QObject):
 
                     print("JARVIS: No command received.")
 
-                    # Explicitly leave LISTENING.
                     self.bridge.set_state(JarvisState.IDLE.value)
-
                     self.bridge.set_state(JarvisState.SLEEPING.value)
+                    self.bridge.set_overlay_status("Sleeping")
 
                     self.listener.prepare_for_wake_word()
 
@@ -137,6 +140,8 @@ class VoiceWorker(QObject):
                 # COMMAND RECEIVED
                 # ==========================================
 
+                self.bridge.send_transcript(command)
+                self.bridge.set_overlay_status(command)
                 self.command_received.emit(command)
 
                 # ==========================================
