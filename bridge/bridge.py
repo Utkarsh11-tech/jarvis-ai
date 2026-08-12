@@ -9,6 +9,8 @@ class JarvisBridge(QObject):
 
     state_changed = Signal(str)
     response_received = Signal(str)
+    transcript_received = Signal(str)
+    overlay_status_changed = Signal(str)
 
     # Wake word was detected
     wake_detected = Signal()
@@ -40,6 +42,12 @@ class JarvisBridge(QObject):
 
     def send_response(self, response):
         self.response_received.emit(response)
+
+    def send_transcript(self, transcript):
+        self.transcript_received.emit(transcript)
+
+    def set_overlay_status(self, status):
+        self.overlay_status_changed.emit(status)
 
     def wake_detected_event(self):
         self.wake_detected.emit()
