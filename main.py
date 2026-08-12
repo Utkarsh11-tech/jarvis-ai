@@ -44,6 +44,36 @@ def main():
         window.overlay.set_status
     )
 
+    # Keep the floating overlay useful during the complete interaction,
+    # not only the initial listening state. The home screen still controls
+    # its normal wake-word lifecycle; these updates add the processing and
+    # speaking states without changing the existing voice pipeline.
+    def update_overlay_for_state(state):
+        normalized = str(state).lower()
+
+        if normalized == "thinking":
+            window.overlay.set_status("Processing...")
+            window.show_wake_overlay()
+
+        elif normalized == "executing":
+            window.overlay.set_status("Processing...")
+            window.show_wake_overlay()
+
+        elif normalized == "speaking":
+            window.overlay.set_status("Speaking...")
+            window.show_wake_overlay()
+
+        elif normalized == "error":
+            window.overlay.set_status("Error")
+            window.show_wake_overlay()
+
+        elif normalized == "sleeping":
+            window.overlay.hide_overlay()
+
+    bridge.state_changed.connect(
+        update_overlay_for_state
+    )
+
     window.show()
 
     # ================================================
