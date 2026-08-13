@@ -139,9 +139,19 @@ class Assistant(BaseAssistant):
 
         try:
 
-            ctypes.windll.user32.keybd_event(0xB2, 0, 0, 0)
+            ctypes.windll.user32.keybd_event(
+                0xB2,
+                0,
+                0,
+                0,
+            )
 
-            ctypes.windll.user32.keybd_event(0xB2, 0, 2, 0)
+            ctypes.windll.user32.keybd_event(
+                0xB2,
+                0,
+                2,
+                0,
+            )
 
             response = "Playback stopped."
 
@@ -646,26 +656,24 @@ class Assistant(BaseAssistant):
         for result in results:
 
             # --------------------------------------
-            # SPEAKING
-            # --------------------------------------
-
-            self.state_manager.set_state(JarvisState.SPEAKING)
-
-            acknowledgement = get_acknowledgement(result)
-
-            print(acknowledgement)
-
-            speak(acknowledgement)
-
-            # --------------------------------------
             # CHROME PROFILE
             # --------------------------------------
 
+            # IMPORTANT:
+            # Chrome is handled BEFORE the generic
+            # acknowledgement speech.
+            #
+            # This prevents JARVIS from speaking the
+            # generic Chrome acknowledgement through
+            # XTTS before announcing the available
+            # Chrome profiles.
             if result["intent"] == "OPEN_APPLICATION" and result["target"] == "chrome":
+
+                self.state_manager.set_state(JarvisState.SPEAKING)
 
                 self.conversation.start(
                     kind="chrome_profile",
-                    state=ConversationState.WAITING_FOR_SELECTION,
+                    state=(ConversationState.WAITING_FOR_SELECTION),
                     prompt=("Please choose a Chrome profile."),
                     metadata={
                         "intent": result["intent"],
@@ -676,6 +684,18 @@ class Assistant(BaseAssistant):
                 self.request_chrome_profile()
 
                 return
+
+            # --------------------------------------
+            # SPEAKING
+            # --------------------------------------
+
+            self.state_manager.set_state(JarvisState.SPEAKING)
+
+            acknowledgement = get_acknowledgement(result)
+
+            print(acknowledgement)
+
+            speak(acknowledgement)
 
             # --------------------------------------
             # PROFILE CONTEXT
