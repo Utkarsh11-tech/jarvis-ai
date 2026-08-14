@@ -31,6 +31,8 @@ class OrbWidget(QWidget):
 
         self.setMinimumSize(300, 300)
 
+        self.scale = 1.0
+
         # ==================================================
         # JARVIS STATE
         # ==================================================
@@ -273,6 +275,22 @@ class OrbWidget(QWidget):
         self.update()
 
     # ======================================================
+    # SCALE
+    # ======================================================
+
+    def set_scale(self, scale):
+
+        self.scale = max(
+            0.80,
+            min(
+                1.40,
+                float(scale),
+            ),
+        )
+
+        self.update()
+
+    # ======================================================
     # AUDIO LEVEL
     # ======================================================
 
@@ -351,10 +369,14 @@ class OrbWidget(QWidget):
         # RESPONSIVE SIZE
         # ==================================================
 
-        base_radius = min(
-            self.width(),
-            self.height(),
-        ) * 0.38
+        base_radius = (
+            min(
+                self.width(),
+                self.height(),
+            )
+            * 0.38
+            * self.scale
+        )
 
         breathing = (
             math.sin(self.pulse)
