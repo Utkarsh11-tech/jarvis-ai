@@ -14,7 +14,10 @@ from brain.core.conversation_manager import (
 from brain.core.executor import execute, get_acknowledgement
 from brain.core.normalizer import normalize
 from brain.core.state import JarvisState
+from brain.memory.conversation_memory import ConversationMemory
+from brain.models.ollama_client import OllamaClient
 from brain.voices.voice_manager import speak
+from brain.config.llm_config import JARVIS_SYSTEM_PROMPT
 
 
 class Assistant(BaseAssistant):
@@ -29,6 +32,8 @@ class Assistant(BaseAssistant):
     - Chrome profile conversations
     - contextual follow-ups
     - stop playback
+    - Ollama / Qwen conversational fallback
+    - LLM conversation memory
     """
 
     # ==================================================
@@ -41,6 +46,22 @@ class Assistant(BaseAssistant):
 
     def __init__(self, bridge):
         super().__init__(bridge)
+
+        # ==================================================
+        # LLM
+        # ==================================================
+
+        self.ollama = OllamaClient()
+
+        # ==================================================
+        # LLM CONVERSATION MEMORY
+        # ==================================================
+
+        self.llm_memory = ConversationMemory(max_messages=20)
+
+        # ==================================================
+        # CONVERSATION
+        # ==================================================
 
         self.conversation = ConversationManager()
 
@@ -509,13 +530,116 @@ class Assistant(BaseAssistant):
             )
 
     # ==================================================
+    # OLLAMA / QWEN COMMAND HANDLER
+    # ==================================================
+
+    def _handle_llm_command(self, command):
+        """
+        Sends an unhandled conversational command
+        to Qwen using the recent LLM conversation
+        history.
+        """
+
+        if not command:
+            return False
+
+        print(f"JARVIS: Sending to Qwen: {command}")
+
+        self.state_manager.set_state(JarvisState.THINKING)
+
+        # ==================================================
+        # GET PREVIOUS CONVERSATION
+        # ==================================================
+
+        history = self.llm_memory.get_messages()
+
+        # ==================================================
+        # SEND CURRENT COMMAND + HISTORY TO QWEN
+        # ==================================================
+
+        try:
+
+            response = self.ollama.generate(
+                prompt=command,
+                system_prompt=JARVIS_SYSTEM_PROMPT,
+                history=history,
+            )
+
+        except RuntimeError as error:
+
+            print(f"JARVIS: Ollama error: {error}")
+
+            response = "I'm unable to reach my " "language model right now."
+
+            self.state_manager.set_state(JarvisState.SPEAKING)
+
+            speak(response)
+
+            self.bridge.send_response(response)
+
+            self.state_manager.set_state(JarvisState.IDLE)
+
+            return True
+
+        # ==================================================
+        # VALIDATE RESPONSE
+        # ==================================================
+
+        if not response:
+
+            response = "I didn't receive a response " "from the language model."
+
+            self.state_manager.set_state(JarvisState.SPEAKING)
+
+            speak(response)
+
+            self.bridge.send_response(response)
+
+            self.state_manager.set_state(JarvisState.IDLE)
+
+            return True
+
+        # ==================================================
+        # STORE SUCCESSFUL CONVERSATION
+        # ==================================================
+
+        self.llm_memory.add_user_message(command)
+
+        self.llm_memory.add_assistant_message(response)
+
+        # ==================================================
+        # LOG RESPONSE
+        # ==================================================
+
+        print(f"JARVIS: Qwen response: {response}")
+
+        # ==================================================
+        # SPEAKING
+        # ==================================================
+
+        self.state_manager.set_state(JarvisState.SPEAKING)
+
+        speak(response)
+
+        self.bridge.send_response(response)
+
+        # ==================================================
+        # RETURN TO IDLE
+        # ==================================================
+
+        self.state_manager.set_state(JarvisState.IDLE)
+
+        return True
+
+    # ==================================================
     # CONVERSATION-AWARE COMMAND HANDLER
     # ==================================================
 
     def handle_command(self, command):
         """
         Routes wake words, pending responses,
-        contextual commands, and normal commands.
+        contextual commands, normal commands,
+        and unhandled commands to Qwen.
 
         IMPORTANT:
         If JARVIS is SLEEPING, normal commands are
@@ -527,19 +651,6 @@ class Assistant(BaseAssistant):
 
         # ==========================================
         # WAKE WORD
-        # ==========================================
-
-        # IMPORTANT:
-        # This check MUST happen before the sleeping
-        # state gate.
-        #
-        # This allows:
-        #
-        # SLEEPING
-        #    +
-        # hey jarvis
-        #    ↓
-        # LISTENING
         # ==========================================
 
         if self.is_wake_word(command):
@@ -566,8 +677,6 @@ class Assistant(BaseAssistant):
         # REAL COMMAND RECEIVED
         # ==========================================
 
-        # Since a real command arrived, cancel the
-        # wake timeout.
         self._stop_wake_timeout()
 
         # ==========================================
@@ -647,9 +756,13 @@ class Assistant(BaseAssistant):
 
         results = self.process_command(command)
 
+        # ==========================================
+        # LLM FALLBACK
+        # ==========================================
+
         if not results:
 
-            self.state_manager.set_state(JarvisState.IDLE)
+            self._handle_llm_command(command)
 
             return
 
@@ -659,14 +772,6 @@ class Assistant(BaseAssistant):
             # CHROME PROFILE
             # --------------------------------------
 
-            # IMPORTANT:
-            # Chrome is handled BEFORE the generic
-            # acknowledgement speech.
-            #
-            # This prevents JARVIS from speaking the
-            # generic Chrome acknowledgement through
-            # XTTS before announcing the available
-            # Chrome profiles.
             if result["intent"] == "OPEN_APPLICATION" and result["target"] == "chrome":
 
                 self.state_manager.set_state(JarvisState.SPEAKING)
