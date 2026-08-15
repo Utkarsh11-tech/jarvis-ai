@@ -9,13 +9,13 @@ from PySide6.QtGui import (
     QLinearGradient,
     QIcon,
     QPixmap,
+    QImage,
 )
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
     QMainWindow,
     QVBoxLayout,
-    QHBoxLayout,
     QWidget,
     QFrame,
     QSystemTrayIcon,
@@ -41,8 +41,6 @@ from body.app.screens.chat.chat_screen import (
     ChatScreen,
 )
 
-from bridge.bridge import JarvisBridge
-
 
 # ============================================================
 # BACKGROUND
@@ -64,6 +62,10 @@ class BackgroundFrame(QWidget):
             True,
         )
 
+    # ========================================================
+    # THEME
+    # ========================================================
+
     def set_theme(
         self,
         theme,
@@ -72,6 +74,10 @@ class BackgroundFrame(QWidget):
         self.theme = theme.lower()
 
         self.update()
+
+    # ========================================================
+    # PAINT
+    # ========================================================
 
     def paintEvent(
         self,
@@ -394,6 +400,8 @@ class BackgroundFrame(QWidget):
 
         left_x = 55
 
+        # LEFT
+
         painter.drawLine(
             left_x,
             155,
@@ -435,6 +443,8 @@ class BackgroundFrame(QWidget):
             left_x + 220,
             230,
         )
+
+        # RIGHT
 
         right_x = width - 55
 
@@ -775,6 +785,8 @@ class HUDFrame(QWidget):
         margin = 8
         corner = 28
 
+        # TOP LEFT
+
         painter.drawLine(
             margin,
             margin,
@@ -788,6 +800,8 @@ class HUDFrame(QWidget):
             margin,
             margin + corner,
         )
+
+        # TOP RIGHT
 
         painter.drawLine(
             width - margin - corner,
@@ -803,6 +817,8 @@ class HUDFrame(QWidget):
             margin + corner,
         )
 
+        # BOTTOM LEFT
+
         painter.drawLine(
             margin,
             height - margin,
@@ -817,6 +833,8 @@ class HUDFrame(QWidget):
             height - margin,
         )
 
+        # BOTTOM RIGHT
+
         painter.drawLine(
             width - margin - corner,
             height - margin,
@@ -830,6 +848,10 @@ class HUDFrame(QWidget):
             width - margin,
             height - margin,
         )
+
+        # ========================================================
+        # SIDE MARKERS
+        # ========================================================
 
         painter.setPen(
             QPen(
@@ -854,12 +876,9 @@ class HUDFrame(QWidget):
             center_y + 40,
         )
 
-        painter.setPen(
-            QPen(
-                marker_color,
-                1,
-            )
-        )
+        # ========================================================
+        # HUD TICKS
+        # ========================================================
 
         for x in range(
             80,
@@ -914,6 +933,18 @@ class MainWindow(QMainWindow):
         # ========================================================
 
         self.ui_scale = 1.0
+        self._last_scale = None
+
+        self.current_theme = (
+            self.settings_manager.theme.lower()
+        )
+
+        # ========================================================
+        # ICON CACHE
+        # ========================================================
+
+        self._chat_icons = {}
+        self._orb_icons = {}
 
         # ========================================================
         # WINDOW
@@ -1156,10 +1187,7 @@ class MainWindow(QMainWindow):
             self.chat_screen
         )
 
-        # ========================================================
-        # CHAT COMPATIBILITY ALIAS
-        # ========================================================
-
+        # Compatibility alias used elsewhere.
         self.chat = self.chat_screen.conversation
 
         # ========================================================
@@ -1178,6 +1206,15 @@ class MainWindow(QMainWindow):
         self.settings_screen.theme_changed.connect(
             self.apply_theme
         )
+
+        # Overlay setting must update the running application.
+        if hasattr(
+            self.settings_screen,
+            "overlay_checkbox",
+        ):
+            self.settings_screen.overlay_checkbox.toggled.connect(
+                self.handle_overlay_setting_changed
+            )
 
         # ========================================================
         # SIDEBAR
@@ -1213,6 +1250,11 @@ class MainWindow(QMainWindow):
             12
         )
 
+        self.sidebar_layout.setAlignment(
+            Qt.AlignmentFlag.AlignTop
+            | Qt.AlignmentFlag.AlignHCenter
+        )
+
         # ========================================================
         # SIDEBAR BRAND
         # ========================================================
@@ -1225,8 +1267,18 @@ class MainWindow(QMainWindow):
             Qt.AlignmentFlag.AlignCenter
         )
 
+        self.sidebar_brand.setMinimumWidth(
+            self.sidebar_width - 20
+        )
+
+        self.sidebar_brand.setMaximumWidth(
+            self.sidebar_width - 20
+        )
+
         self.sidebar_layout.addWidget(
-            self.sidebar_brand
+            self.sidebar_brand,
+            0,
+            Qt.AlignmentFlag.AlignHCenter,
         )
 
         self.sidebar_layout.addSpacing(
@@ -1259,8 +1311,12 @@ class MainWindow(QMainWindow):
             self.nav_button_size,
         )
 
-        self.orb_nav_button.setText(
-            "◉"
+        self.orb_icon_path = (
+            Path(__file__).resolve()
+            .parents[2]
+            / "assets"
+            / "icons"
+            / "orb_icon.png"
         )
 
         self.orb_nav_button.clicked.connect(
@@ -1292,65 +1348,13 @@ class MainWindow(QMainWindow):
             self.nav_button_size,
         )
 
-        self.chat_nav_button.setIconSize(
-            QSize(
-                self.nav_icon_size,
-                self.nav_icon_size,
-            )
-        )
-
-        # --------------------------------------------------------
-        # CHAT PNG
-        # --------------------------------------------------------
-
-        chat_icon_path = (
+        self.chat_icon_path = (
             Path(__file__).resolve()
             .parents[2]
             / "assets"
             / "icons"
             / "chat_icon.png"
         )
-
-        chat_pixmap = QPixmap(
-            str(chat_icon_path)
-        )
-
-        if not chat_pixmap.isNull():
-
-            chat_colored = QPixmap(
-                chat_pixmap.size()
-            )
-
-            chat_colored.fill(
-                Qt.GlobalColor.transparent
-            )
-
-            chat_painter = QPainter(
-                chat_colored
-            )
-
-            chat_painter.setRenderHint(
-                QPainter.RenderHint.Antialiasing
-            )
-
-            chat_painter.setCompositionMode(
-                QPainter.CompositionMode.CompositionMode_SourceIn
-            )
-
-            chat_painter.fillRect(
-                chat_colored.rect(),
-                QColor(
-                    "#00D9FF"
-                ),
-            )
-
-            chat_painter.end()
-
-            self.chat_nav_button.setIcon(
-                QIcon(
-                    chat_colored
-                )
-            )
 
         self.chat_nav_button.clicked.connect(
             self.show_chat_page
@@ -1398,11 +1402,23 @@ class MainWindow(QMainWindow):
         self.sidebar_layout.addStretch()
 
         # ========================================================
+        # INITIAL ICON GENERATION
+        # ========================================================
+
+        self.update_chat_icon_theme(
+            self.current_theme
+        )
+
+        self.update_orb_icon_theme(
+            self.current_theme
+        )
+
+        # ========================================================
         # APPLY THEME
         # ========================================================
 
         self.apply_theme(
-            self.settings_manager.theme
+            self.current_theme
         )
 
         # ========================================================
@@ -1421,7 +1437,9 @@ class MainWindow(QMainWindow):
         # SCALE
         # ========================================================
 
-        self.update_ui_scale()
+        self.update_ui_scale(
+            force=True
+        )
 
     # ============================================================
     # TRAY
@@ -1718,6 +1736,305 @@ class MainWindow(QMainWindow):
         )
 
     # ============================================================
+    # CHAT ICON THEME
+    # ============================================================
+
+    def update_chat_icon_theme(
+        self,
+        theme,
+    ):
+
+        if not hasattr(
+            self,
+            "chat_nav_button",
+        ):
+            return
+
+        theme = theme.lower()
+
+        if theme in self._chat_icons:
+            self.chat_nav_button.setIcon(
+                self._chat_icons[theme]
+            )
+            return
+
+        icon_color = QColor(
+            "#008FB8"
+            if theme == "light"
+            else "#00D9FF"
+        )
+
+        source = QImage(
+            str(self.chat_icon_path)
+        )
+
+        if source.isNull():
+            print(
+                "JARVIS: ERROR - Chat icon could not be loaded:",
+                self.chat_icon_path,
+            )
+            return
+
+        # Work on a tiny cached raster. The sidebar icon is only
+        # around 30 px, so processing a 256 px source is more than
+        # enough and avoids UI freezes during theme changes.
+        source = source.scaled(
+            256,
+            256,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.FastTransformation,
+        ).convertToFormat(
+            QImage.Format.Format_ARGB32
+        )
+
+        colored = QImage(
+            source.size(),
+            QImage.Format.Format_ARGB32,
+        )
+        colored.fill(Qt.GlobalColor.transparent)
+
+        red = icon_color.red()
+        green = icon_color.green()
+        blue = icon_color.blue()
+
+        for y in range(source.height()):
+            for x in range(source.width()):
+                pixel = source.pixel(x, y)
+
+                alpha = (pixel >> 24) & 0xFF
+                if alpha == 0:
+                    continue
+
+                r = (pixel >> 16) & 0xFF
+                g = (pixel >> 8) & 0xFF
+                b = pixel & 0xFF
+
+                luminance = (
+                    299 * r +
+                    587 * g +
+                    114 * b
+                ) // 1000
+
+                darkness = 255 - luminance
+                final_alpha = (alpha * darkness) // 255
+
+                if final_alpha < 8:
+                    continue
+
+                colored.setPixel(
+                    x,
+                    y,
+                    (
+                        (final_alpha << 24)
+                        | (red << 16)
+                        | (green << 8)
+                        | blue
+                    ),
+                )
+
+        icon = QIcon(
+            QPixmap.fromImage(colored)
+        )
+
+        self._chat_icons[theme] = icon
+        self.chat_nav_button.setIcon(icon)
+
+    # ============================================================
+    # ORB ICON THEME
+    # ============================================================
+
+    def update_orb_icon_theme(
+        self,
+        theme,
+    ):
+
+        if not hasattr(
+            self,
+            "orb_nav_button",
+        ):
+            return
+
+        theme = theme.lower()
+
+        if theme in self._orb_icons:
+            self.orb_nav_button.setIcon(
+                self._orb_icons[theme]
+            )
+            return
+
+        # The light theme uses a deliberately darker cyan so the
+        # supplied Orb artwork does not disappear into the light UI.
+        icon_color = QColor(
+            "#00536B"
+            if theme == "light"
+            else "#00D9FF"
+        )
+
+        source = QImage(
+            str(self.orb_icon_path)
+        )
+
+        if source.isNull():
+            print(
+                "JARVIS: ERROR - Orb icon could not be loaded:",
+                self.orb_icon_path,
+            )
+            return
+
+        # Downsample BEFORE pixel analysis. The original artwork is
+        # large, but the sidebar icon is small. This removes the
+        # several-million-pixel processing delay on theme changes.
+        source = source.scaled(
+            256,
+            256,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.FastTransformation,
+        ).convertToFormat(
+            QImage.Format.Format_ARGB32
+        )
+
+        width = source.width()
+        height = source.height()
+
+        mask = QImage(
+            width,
+            height,
+            QImage.Format.Format_Grayscale8,
+        )
+        mask.fill(0)
+
+        min_x = width
+        min_y = height
+        max_x = -1
+        max_y = -1
+
+        for y in range(height):
+            for x in range(width):
+                pixel = source.pixel(x, y)
+
+                alpha = (pixel >> 24) & 0xFF
+                if alpha == 0:
+                    continue
+
+                r = (pixel >> 16) & 0xFF
+                g = (pixel >> 8) & 0xFF
+                b = pixel & 0xFF
+
+                maximum = max(r, g, b)
+                minimum = min(r, g, b)
+                saturation = maximum - minimum
+
+                luminance = (
+                    299 * r +
+                    587 * g +
+                    114 * b
+                ) // 1000
+
+                # Keep cyan/blue artwork and dark linework while
+                # rejecting the pale checkerboard background.
+                if (
+                    saturation >= 18
+                    or luminance <= 155
+                ):
+                    color_alpha = min(
+                        255,
+                        saturation * 6,
+                    )
+
+                    dark_alpha = max(
+                        0,
+                        min(
+                            255,
+                            (175 - luminance) * 5,
+                        ),
+                    )
+
+                    final_alpha = max(
+                        color_alpha,
+                        dark_alpha,
+                    )
+
+                    if final_alpha < 25:
+                        continue
+
+                    mask.setPixel(
+                        x,
+                        y,
+                        final_alpha,
+                    )
+
+                    min_x = min(min_x, x)
+                    min_y = min(min_y, y)
+                    max_x = max(max_x, x)
+                    max_y = max(max_y, y)
+
+        if (
+            max_x < min_x
+            or max_y < min_y
+        ):
+            print(
+                "JARVIS: ERROR - Orb icon foreground could not be detected:",
+                self.orb_icon_path,
+            )
+            return
+
+        padding = max(
+            2,
+            int(
+                min(width, height) * 0.015
+            ),
+        )
+
+        min_x = max(0, min_x - padding)
+        min_y = max(0, min_y - padding)
+        max_x = min(width - 1, max_x + padding)
+        max_y = min(height - 1, max_y + padding)
+
+        cropped_mask = mask.copy(
+            min_x,
+            min_y,
+            max_x - min_x + 1,
+            max_y - min_y + 1,
+        )
+
+        colored = QImage(
+            cropped_mask.size(),
+            QImage.Format.Format_ARGB32,
+        )
+        colored.fill(Qt.GlobalColor.transparent)
+
+        red = icon_color.red()
+        green = icon_color.green()
+        blue = icon_color.blue()
+
+        for y in range(cropped_mask.height()):
+            for x in range(cropped_mask.width()):
+                final_alpha = (
+                    cropped_mask.pixel(x, y) & 0xFF
+                )
+
+                if final_alpha == 0:
+                    continue
+
+                colored.setPixel(
+                    x,
+                    y,
+                    (
+                        (final_alpha << 24)
+                        | (red << 16)
+                        | (green << 8)
+                        | blue
+                    ),
+                )
+
+        icon = QIcon(
+            QPixmap.fromImage(colored)
+        )
+
+        self._orb_icons[theme] = icon
+        self.orb_nav_button.setIcon(icon)
+
+    # ============================================================
     # THEME
     # ============================================================
 
@@ -1727,6 +2044,20 @@ class MainWindow(QMainWindow):
     ):
 
         theme = theme.lower()
+
+        self.current_theme = theme
+
+        # ========================================================
+        # ICONS
+        # ========================================================
+
+        self.update_chat_icon_theme(
+            theme
+        )
+
+        self.update_orb_icon_theme(
+            theme
+        )
 
         # ========================================================
         # ORB
@@ -1838,7 +2169,7 @@ class MainWindow(QMainWindow):
             )
 
         # ========================================================
-        # SIDEBAR
+        # SIDEBAR STYLE
         # ========================================================
 
         if hasattr(
@@ -1846,13 +2177,17 @@ class MainWindow(QMainWindow):
             "sidebar",
         ):
 
-            self.update_sidebar_style()
+            self.update_sidebar_style(
+                theme
+            )
 
         # ========================================================
         # SCALE
         # ========================================================
 
-        self.update_ui_scale()
+        self.update_ui_scale(
+            force=True
+        )
 
     # ============================================================
     # SIDEBAR STYLE
@@ -1860,9 +2195,14 @@ class MainWindow(QMainWindow):
 
     def update_sidebar_style(
         self,
+        theme=None,
     ):
 
-        theme = self.settings_manager.theme.lower()
+        theme = (
+            theme
+            or self.current_theme
+            or self.settings_manager.theme
+        ).lower()
 
         if theme == "light":
 
@@ -1946,10 +2286,11 @@ class MainWindow(QMainWindow):
 
     def update_ui_scale(
         self,
+        force=False,
     ):
 
-        width = self.width()
-        height = self.height()
+        width = max(1, self.width())
+        height = max(1, self.height())
 
         scale_x = width / 1000.0
         scale_y = height / 650.0
@@ -1967,6 +2308,16 @@ class MainWindow(QMainWindow):
             ),
         )
 
+        # Do not repeatedly rebuild stylesheets while Qt is emitting
+        # several resize events during maximize/minimize.
+        if (
+            not force
+            and self._last_scale is not None
+            and abs(scale - self._last_scale) < 0.01
+        ):
+            return
+
+        self._last_scale = scale
         self.ui_scale = scale
 
         # ========================================================
@@ -1975,22 +2326,17 @@ class MainWindow(QMainWindow):
 
         header_size = max(
             18,
-            int(
-                27 * scale
-            ),
+            int(27 * scale),
         )
 
         header_spacing = max(
             2,
-            int(
-                8 * scale
-            ),
+            int(8 * scale),
         )
 
         header_color = (
             "#08202C"
-            if self.settings_manager.theme.lower()
-            == "light"
+            if self.current_theme == "light"
             else "#DDEFFF"
         )
 
@@ -2016,22 +2362,17 @@ class MainWindow(QMainWindow):
 
         status_size = max(
             9,
-            int(
-                11 * scale
-            ),
+            int(11 * scale),
         )
 
         status_spacing = max(
             1,
-            int(
-                2 * scale
-            ),
+            int(2 * scale),
         )
 
         status_color = (
             "#26728A"
-            if self.settings_manager.theme.lower()
-            == "light"
+            if self.current_theme == "light"
             else "#5C91B5"
         )
 
@@ -2057,22 +2398,17 @@ class MainWindow(QMainWindow):
 
         footer_size = max(
             8,
-            int(
-                10 * scale
-            ),
+            int(10 * scale),
         )
 
         footer_spacing = max(
             1,
-            int(
-                3 * scale
-            ),
+            int(3 * scale),
         )
 
         footer_color = (
             "#47849A"
-            if self.settings_manager.theme.lower()
-            == "light"
+            if self.current_theme == "light"
             else "#34546B"
         )
 
@@ -2093,53 +2429,25 @@ class MainWindow(QMainWindow):
         )
 
         # ========================================================
-        # ORB PAGE
+        # ORB PAGE LAYOUT
         # ========================================================
 
         self.main_layout.setContentsMargins(
-            max(
-                24,
-                int(
-                    38 * scale
-                ),
-            ),
-            max(
-                18,
-                int(
-                    28 * scale
-                ),
-            ),
-            max(
-                24,
-                int(
-                    38 * scale
-                ),
-            ),
-            max(
-                18,
-                int(
-                    24 * scale
-                ),
-            ),
+            max(24, int(38 * scale)),
+            max(18, int(28 * scale)),
+            max(24, int(38 * scale)),
+            max(18, int(24 * scale)),
         )
 
         self.main_layout.setSpacing(
-            max(
-                6,
-                int(
-                    10 * scale
-                ),
-            )
+            max(6, int(10 * scale))
         )
 
         # ========================================================
         # SIDEBAR
         # ========================================================
 
-        if hasattr(
-            self,
-            "sidebar",
-        ):
+        if hasattr(self, "sidebar"):
 
             self.sidebar.setGeometry(
                 0,
@@ -2150,23 +2458,12 @@ class MainWindow(QMainWindow):
 
             nav_size = max(
                 44,
-                int(
-                    52 * scale
-                ),
+                int(52 * scale),
             )
 
             icon_size = max(
                 24,
-                int(
-                    30 * scale
-                ),
-            )
-
-            sidebar_font = max(
-                18,
-                int(
-                    23 * scale
-                ),
+                int(30 * scale),
             )
 
             for button in (
@@ -2174,7 +2471,6 @@ class MainWindow(QMainWindow):
                 self.chat_nav_button,
                 self.settings_nav_button,
             ):
-
                 button.setFixedSize(
                     nav_size,
                     nav_size,
@@ -2187,85 +2483,132 @@ class MainWindow(QMainWindow):
                     )
                 )
 
+            # The Settings icon is a glyph, so it must be scaled
+            # independently from PNG icons.
+            settings_font = max(
+                18,
+                int(23 * scale),
+            )
+
+            if self.current_theme == "light":
+                normal = "#477B8C"
+                hover_bg = "#C8EAF2"
+                hover = "#008FB8"
+                hover_border = "#69B5C9"
+                active_bg = "#C2EAF3"
+                active = "#008FB8"
+                active_border = "#00A8D6"
+            else:
+                normal = "#5C91B5"
+                hover_bg = "#061B28"
+                hover = "#00D9FF"
+                hover_border = "#126486"
+                active_bg = "#062638"
+                active = "#00D9FF"
+                active_border = "#00D9FF"
+
+            for button in (
+                self.orb_nav_button,
+                self.chat_nav_button,
+            ):
                 button.setStyleSheet(
                     f"""
                     QToolButton {{
                         background: transparent;
-                        color: #5C91B5;
+                        color: {normal};
                         border: 1px solid transparent;
                         border-radius: 9px;
-                        font-size: {sidebar_font}px;
                     }}
 
                     QToolButton:hover {{
-                        background: #061B28;
-                        color: #00D9FF;
-                        border: 1px solid #126486;
+                        background: {hover_bg};
+                        color: {hover};
+                        border: 1px solid {hover_border};
                     }}
 
                     QToolButton[active="true"] {{
-                        background: #062638;
-                        color: #00D9FF;
-                        border: 1px solid #00D9FF;
+                        background: {active_bg};
+                        color: {active};
+                        border: 1px solid {active_border};
                     }}
                     """
                 )
+
+            self.settings_nav_button.setStyleSheet(
+                f"""
+                QToolButton {{
+                    background: transparent;
+                    color: {normal};
+                    border: 1px solid transparent;
+                    border-radius: 9px;
+                    font-size: {settings_font}px;
+                    font-family: "Segoe UI Symbol", "Segoe UI", Arial;
+                    padding: 0px;
+                }}
+
+                QToolButton:hover {{
+                    background: {hover_bg};
+                    color: {hover};
+                    border: 1px solid {hover_border};
+                }}
+
+                QToolButton[active="true"] {{
+                    background: {active_bg};
+                    color: {active};
+                    border: 1px solid {active_border};
+                }}
+                """
+            )
+
+            # Keep the brand safely inside the 110 px sidebar even
+            # at small window sizes. No clipping of J.A.R.V.I.S.
+            brand_font = max(
+                7,
+                min(
+                    10,
+                    int(10 * scale),
+                ),
+            )
+
+            brand_spacing = max(
+                1,
+                min(
+                    2,
+                    int(2 * scale),
+                ),
+            )
+
+            self.sidebar_brand.setMinimumWidth(
+                self.sidebar_width - 20
+            )
+            self.sidebar_brand.setMaximumWidth(
+                self.sidebar_width - 20
+            )
+            self.sidebar_brand.setMinimumHeight(24)
+
+            brand_color = (
+                "#08202C"
+                if self.current_theme == "light"
+                else "#DDEFFF"
+            )
 
             self.sidebar_brand.setStyleSheet(
                 f"""
                 QLabel {{
                     background: transparent;
-                    color: #DDEFFF;
-                    font-size: {max(9, int(11 * scale))}px;
+                    color: {brand_color};
+                    font-family:
+                        "Orbitron",
+                        "Eurostile",
+                        "Arial";
+                    font-size: {brand_font}px;
                     font-weight: 700;
-                    letter-spacing: {max(1, int(2 * scale))}px;
+                    letter-spacing: {brand_spacing}px;
+                    padding: 0px;
+                    margin: 0px;
                 }}
                 """
             )
-
-            if self.settings_manager.theme.lower() == "light":
-
-                for button in (
-                    self.orb_nav_button,
-                    self.chat_nav_button,
-                    self.settings_nav_button,
-                ):
-
-                    button.setStyleSheet(
-                        f"""
-                        QToolButton {{
-                            background: transparent;
-                            color: #477B8C;
-                            border: 1px solid transparent;
-                            border-radius: 9px;
-                            font-size: {sidebar_font}px;
-                        }}
-
-                        QToolButton:hover {{
-                            background: #C8EAF2;
-                            color: #008FB8;
-                            border: 1px solid #69B5C9;
-                        }}
-
-                        QToolButton[active="true"] {{
-                            background: #C2EAF3;
-                            color: #008FB8;
-                            border: 1px solid #00A8D6;
-                        }}
-                        """
-                    )
-
-                self.sidebar_brand.setStyleSheet(
-                    f"""
-                    QLabel {{
-                        background: transparent;
-                        color: #08202C;
-                        font-size: {max(9, int(11 * scale))}px;
-                        font-weight: 700;
-                        letter-spacing: {max(1, int(2 * scale))}px;
-                    }}
-                    """
-                )
 
     # ============================================================
     # RESIZE
@@ -2326,6 +2669,8 @@ class MainWindow(QMainWindow):
                 self.central_widget.height(),
             )
 
+        # Resize only updates geometry/font/icon display sizes.
+        # PNG processing is cached and never happens here.
         self.update_ui_scale()
 
     # ============================================================
@@ -2381,12 +2726,52 @@ class MainWindow(QMainWindow):
         )
 
     # ============================================================
+    # OVERLAY SETTING
+    # ============================================================
+
+    def handle_overlay_setting_changed(
+        self,
+        enabled,
+    ):
+
+        enabled = bool(
+            enabled
+        )
+
+        try:
+
+            self.settings_manager.overlay_enabled = enabled
+
+        except (
+            AttributeError,
+            TypeError,
+        ):
+
+            pass
+
+        if not enabled:
+
+            self.overlay.hide_overlay()
+
+            return
+
+        if self.orb.state == OrbState.LISTENING:
+
+            self.show_wake_overlay()
+
+    # ============================================================
     # WAKE OVERLAY
     # ============================================================
 
     def show_wake_overlay(
         self,
     ):
+
+        if not self.settings_manager.overlay_enabled:
+
+            self.overlay.hide_overlay()
+
+            return
 
         active_window = (
             QApplication.activeWindow()
@@ -2406,9 +2791,7 @@ class MainWindow(QMainWindow):
 
             return
 
-        if self.settings_manager.overlay_enabled:
-
-            self.overlay.show_overlay()
+        self.overlay.show_overlay()
 
     # ============================================================
     # TOGGLE LISTENING
