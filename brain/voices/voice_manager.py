@@ -1,22 +1,105 @@
-from brain.voices.online_speaker import speak_online
-from brain.voices.xtts_speaker import speak_xtts
+import os
 
-VOICE_MODE = "xtts"
+# ==========================================================
+# VOICE MODE
+# ==========================================================
+
+VOICE_MODE = (
+    os.getenv(
+        "JARVIS_VOICE_MODE",
+        "xtts",
+    )
+    .strip()
+    .lower()
+)
 
 
-def speak(text: str) -> None:
+# ==========================================================
+# VOICE MANAGER
+# ==========================================================
+
+
+def speak(text: str) -> bool:
     """
-    Speaks text using the currently selected voice engine.
+    Speaks text using the configured voice backend.
+
+    Supported modes:
+
+        xtts
+        online
+        disabled
+
+    The voice layer is intentionally isolated from the
+    JARVIS brain.
+
+    A voice backend failure must never crash the brain.
     """
 
     if not text:
-        return
+        return True
+
+    # ------------------------------------------------------
+    # DISABLED
+    # ------------------------------------------------------
+
+    if VOICE_MODE in {
+        "disabled",
+        "none",
+        "off",
+    }:
+
+        print("JARVIS Voice: voice output disabled.")
+
+        return True
+
+    # ------------------------------------------------------
+    # ONLINE
+    # ------------------------------------------------------
 
     if VOICE_MODE == "online":
-        speak_online(text)
 
-    elif VOICE_MODE == "xtts":
-        speak_xtts(text)
+        try:
 
-    else:
-        raise ValueError(f"Unknown VOICE_MODE: {VOICE_MODE}")
+            from brain.voices.online_speaker import (
+                speak_online,
+            )
+
+            speak_online(text)
+
+            return True
+
+        except Exception as error:
+
+            print("JARVIS Voice: online voice " f"backend failed: {error}")
+
+            return False
+
+    # ------------------------------------------------------
+    # XTTS
+    # ------------------------------------------------------
+
+    if VOICE_MODE == "xtts":
+
+        try:
+
+            from brain.voices.xtts_speaker import (
+                speak_xtts,
+            )
+
+            speak_xtts(text)
+
+            return True
+
+        except Exception as error:
+
+            print("JARVIS Voice: XTTS backend " f"failed: {error}")
+
+            return False
+
+    # ------------------------------------------------------
+    # UNKNOWN MODE
+    # ------------------------------------------------------
+
+    print("JARVIS Voice: unknown voice mode: " f"{VOICE_MODE}")
+
+    return False
