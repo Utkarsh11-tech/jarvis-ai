@@ -1,4 +1,6 @@
-from PySide6.QtCore import Qt
+from pathlib import Path
+
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import (
     QPainter,
     QPen,
@@ -7,46 +9,80 @@ from PySide6.QtGui import (
     QLinearGradient,
     QIcon,
     QPixmap,
+    QImage,
 )
-
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
     QMainWindow,
     QVBoxLayout,
     QWidget,
+    QFrame,
     QSystemTrayIcon,
     QMenu,
+    QStackedWidget,
+    QToolButton,
 )
 
 from body.app.widgets.overlay import JarvisOverlay
 from body.app.widgets.orb import OrbWidget, OrbState
 from body.app.widgets.microphone import Microphone
-from body.app.widgets.conversation import ConversationWidget
-from body.app.widgets.chat_input import ChatInput
 from body.app.widgets.chrome_profile_selector import (
     ChromeProfileSelector,
 )
 
-from bridge.bridge import JarvisBridge
+from body.app.settings_manager import SettingsManager
+
+from body.app.screens.settings.settings_screen import (
+    SettingsScreen,
+)
+
+from body.app.screens.chat.chat_screen import (
+    ChatScreen,
+)
 
 
-# ==================================================
+# ============================================================
 # BACKGROUND
-# ==================================================
+# ============================================================
 
 
 class BackgroundFrame(QWidget):
 
-    def __init__(self, parent=None):
+    def __init__(
+        self,
+        parent=None,
+    ):
         super().__init__(parent)
+
+        self.theme = "dark"
 
         self.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents,
             True,
         )
 
-    def paintEvent(self, event):
+    # ========================================================
+    # THEME
+    # ========================================================
+
+    def set_theme(
+        self,
+        theme,
+    ):
+
+        self.theme = theme.lower()
+
+        self.update()
+
+    # ========================================================
+    # PAINT
+    # ========================================================
+
+    def paintEvent(
+        self,
+        event,
+    ):
 
         painter = QPainter(self)
 
@@ -58,11 +94,169 @@ class BackgroundFrame(QWidget):
         height = self.height()
 
         center_x = width // 2
-        center_y = int(height * 0.35)
+        center_y = int(
+            height * 0.35
+        )
 
-        # ==========================================
-        # BASE BACKGROUND
-        # ==========================================
+        # ========================================================
+        # COLORS
+        # ========================================================
+
+        if self.theme == "light":
+
+            base_top = QColor(
+                235,
+                249,
+                253,
+            )
+
+            base_middle = QColor(
+                222,
+                244,
+                249,
+            )
+
+            base_bottom = QColor(
+                207,
+                236,
+                244,
+            )
+
+            glow_primary = QColor(
+                0,
+                150,
+                190,
+                35,
+            )
+
+            glow_secondary = QColor(
+                0,
+                110,
+                160,
+                20,
+            )
+
+            line_color = QColor(
+                0,
+                120,
+                160,
+                45,
+            )
+
+            ring_color = QColor(
+                0,
+                120,
+                160,
+                30,
+            )
+
+            horizontal_color = QColor(
+                0,
+                150,
+                190,
+                25,
+            )
+
+            tick_color = QColor(
+                0,
+                120,
+                160,
+                45,
+            )
+
+            dot_color = QColor(
+                0,
+                130,
+                175,
+                75,
+            )
+
+            top_color = QColor(
+                0,
+                120,
+                160,
+                50,
+            )
+
+        else:
+
+            base_top = QColor(
+                1,
+                5,
+                10,
+            )
+
+            base_middle = QColor(
+                2,
+                9,
+                17,
+            )
+
+            base_bottom = QColor(
+                0,
+                4,
+                9,
+            )
+
+            glow_primary = QColor(
+                0,
+                90,
+                140,
+                32,
+            )
+
+            glow_secondary = QColor(
+                0,
+                55,
+                100,
+                20,
+            )
+
+            line_color = QColor(
+                0,
+                110,
+                170,
+                30,
+            )
+
+            ring_color = QColor(
+                0,
+                120,
+                180,
+                15,
+            )
+
+            horizontal_color = QColor(
+                0,
+                160,
+                220,
+                18,
+            )
+
+            tick_color = QColor(
+                0,
+                160,
+                220,
+                35,
+            )
+
+            dot_color = QColor(
+                0,
+                180,
+                240,
+                65,
+            )
+
+            top_color = QColor(
+                0,
+                150,
+                210,
+                40,
+            )
+
+        # ========================================================
+        # BASE GRADIENT
+        # ========================================================
 
         base_gradient = QLinearGradient(
             0,
@@ -73,17 +267,17 @@ class BackgroundFrame(QWidget):
 
         base_gradient.setColorAt(
             0.0,
-            QColor(1, 5, 10),
+            base_top,
         )
 
         base_gradient.setColorAt(
             0.5,
-            QColor(2, 9, 17),
+            base_middle,
         )
 
         base_gradient.setColorAt(
             1.0,
-            QColor(0, 4, 9),
+            base_bottom,
         )
 
         painter.fillRect(
@@ -91,34 +285,47 @@ class BackgroundFrame(QWidget):
             base_gradient,
         )
 
-        # ==========================================
-        # CENTRAL BLUE GLOW
-        # ==========================================
+        # ========================================================
+        # CENTRAL GLOW
+        # ========================================================
 
         glow = QRadialGradient(
             center_x,
             center_y,
-            min(width, height) * 0.48,
+            min(
+                width,
+                height,
+            ) * 0.48,
         )
 
         glow.setColorAt(
             0.0,
-            QColor(0, 90, 140, 32),
+            glow_primary,
         )
 
         glow.setColorAt(
             0.30,
-            QColor(0, 55, 100, 20),
+            glow_secondary,
         )
 
         glow.setColorAt(
             0.65,
-            QColor(0, 25, 55, 8),
+            QColor(
+                0,
+                25,
+                55,
+                8,
+            ),
         )
 
         glow.setColorAt(
             1.0,
-            QColor(0, 0, 0, 0),
+            QColor(
+                0,
+                0,
+                0,
+                0,
+            ),
         )
 
         painter.fillRect(
@@ -126,9 +333,9 @@ class BackgroundFrame(QWidget):
             glow,
         )
 
-        # ==========================================
-        # HORIZONTAL CENTER GLOW
-        # ==========================================
+        # ========================================================
+        # HORIZONTAL GLOW
+        # ========================================================
 
         horizontal_glow = QLinearGradient(
             0,
@@ -139,27 +346,37 @@ class BackgroundFrame(QWidget):
 
         horizontal_glow.setColorAt(
             0.0,
-            QColor(0, 0, 0, 0),
+            QColor(
+                0,
+                0,
+                0,
+                0,
+            ),
         )
 
         horizontal_glow.setColorAt(
             0.35,
-            QColor(0, 110, 170, 10),
+            horizontal_color,
         )
 
         horizontal_glow.setColorAt(
             0.5,
-            QColor(0, 160, 220, 18),
+            horizontal_color,
         )
 
         horizontal_glow.setColorAt(
             0.65,
-            QColor(0, 110, 170, 10),
+            horizontal_color,
         )
 
         horizontal_glow.setColorAt(
             1.0,
-            QColor(0, 0, 0, 0),
+            QColor(
+                0,
+                0,
+                0,
+                0,
+            ),
         )
 
         painter.fillRect(
@@ -170,29 +387,20 @@ class BackgroundFrame(QWidget):
             horizontal_glow,
         )
 
-        # ==========================================
+        # ========================================================
         # CIRCUIT LINES
-        # ==========================================
-
-        circuit_pen = QPen(
-            QColor(
-                0,
-                110,
-                170,
-                30,
-            ),
-            1,
-        )
+        # ========================================================
 
         painter.setPen(
-            circuit_pen
+            QPen(
+                line_color,
+                1,
+            )
         )
 
-        # ==========================================
-        # LEFT CIRCUIT
-        # ==========================================
-
         left_x = 55
+
+        # LEFT
 
         painter.drawLine(
             left_x,
@@ -236,9 +444,7 @@ class BackgroundFrame(QWidget):
             230,
         )
 
-        # ==========================================
-        # RIGHT CIRCUIT
-        # ==========================================
+        # RIGHT
 
         right_x = width - 55
 
@@ -284,25 +490,10 @@ class BackgroundFrame(QWidget):
             230,
         )
 
-        # ==========================================
+        # ========================================================
         # SIDE TECHNICAL LINES
-        # ==========================================
+        # ========================================================
 
-        side_pen = QPen(
-            QColor(
-                0,
-                130,
-                190,
-                24,
-            ),
-            1,
-        )
-
-        painter.setPen(
-            side_pen
-        )
-
-        # LEFT
         for y in range(
             270,
             height - 110,
@@ -330,13 +521,6 @@ class BackgroundFrame(QWidget):
                 y + 18,
             )
 
-        # RIGHT
-        for y in range(
-            270,
-            height - 110,
-            55,
-        ):
-
             painter.drawLine(
                 width - 55,
                 y,
@@ -358,22 +542,15 @@ class BackgroundFrame(QWidget):
                 y + 18,
             )
 
-        # ==========================================
-        # SMALL DATA TICKS
-        # ==========================================
-
-        tick_pen = QPen(
-            QColor(
-                0,
-                160,
-                220,
-                35,
-            ),
-            1,
-        )
+        # ========================================================
+        # DATA TICKS
+        # ========================================================
 
         painter.setPen(
-            tick_pen
+            QPen(
+                tick_color,
+                1,
+            )
         )
 
         for y in range(
@@ -396,22 +573,15 @@ class BackgroundFrame(QWidget):
                 y,
             )
 
-        # ==========================================
-        # TECHNICAL DOTS
-        # ==========================================
-
-        dot_pen = QPen(
-            QColor(
-                0,
-                180,
-                240,
-                65,
-            ),
-            2,
-        )
+        # ========================================================
+        # DOTS
+        # ========================================================
 
         painter.setPen(
-            dot_pen
+            QPen(
+                dot_color,
+                2,
+            )
         )
 
         dots = [
@@ -430,22 +600,15 @@ class BackgroundFrame(QWidget):
                 y,
             )
 
-        # ==========================================
-        # SUBTLE CIRCULAR HUD RINGS
-        # ==========================================
-
-        ring_pen = QPen(
-            QColor(
-                0,
-                120,
-                180,
-                15,
-            ),
-            1,
-        )
+        # ========================================================
+        # HUD RINGS
+        # ========================================================
 
         painter.setPen(
-            ring_pen
+            QPen(
+                ring_color,
+                1,
+            )
         )
 
         ring_center_y = int(
@@ -465,22 +628,15 @@ class BackgroundFrame(QWidget):
                 radius * 2,
             )
 
-        # ==========================================
+        # ========================================================
         # TOP DATA LINES
-        # ==========================================
-
-        top_pen = QPen(
-            QColor(
-                0,
-                150,
-                210,
-                40,
-            ),
-            1,
-        )
+        # ========================================================
 
         painter.setPen(
-            top_pen
+            QPen(
+                top_color,
+                1,
+            )
         )
 
         painter.drawLine(
@@ -511,9 +667,9 @@ class BackgroundFrame(QWidget):
             92,
         )
 
-        # ==========================================
+        # ========================================================
         # BOTTOM DATA LINES
-        # ==========================================
+        # ========================================================
 
         painter.drawLine(
             55,
@@ -544,22 +700,39 @@ class BackgroundFrame(QWidget):
         )
 
 
-# ==================================================
+# ============================================================
 # HUD FRAME
-# ==================================================
+# ============================================================
 
 
 class HUDFrame(QWidget):
 
-    def __init__(self, parent=None):
+    def __init__(
+        self,
+        parent=None,
+    ):
         super().__init__(parent)
+
+        self.theme = "dark"
 
         self.setAttribute(
             Qt.WidgetAttribute.WA_TransparentForMouseEvents,
             True,
         )
 
-    def paintEvent(self, event):
+    def set_theme(
+        self,
+        theme,
+    ):
+
+        self.theme = theme.lower()
+
+        self.update()
+
+    def paintEvent(
+        self,
+        event,
+    ):
 
         painter = QPainter(self)
 
@@ -570,30 +743,49 @@ class HUDFrame(QWidget):
         width = self.width()
         height = self.height()
 
-        # ==========================================
-        # HUD FRAME
-        # ==========================================
+        if self.theme == "light":
 
-        pen = QPen(
-            QColor(
+            frame_color = QColor(
+                0,
+                120,
+                160,
+                100,
+            )
+
+            marker_color = QColor(
+                0,
+                150,
+                190,
+                80,
+            )
+
+        else:
+
+            frame_color = QColor(
                 0,
                 150,
                 210,
                 75,
-            ),
-            1,
-        )
+            )
+
+            marker_color = QColor(
+                0,
+                217,
+                255,
+                45,
+            )
 
         painter.setPen(
-            pen
+            QPen(
+                frame_color,
+                1,
+            )
         )
 
         margin = 8
         corner = 28
 
-        # ==========================================
         # TOP LEFT
-        # ==========================================
 
         painter.drawLine(
             margin,
@@ -609,9 +801,7 @@ class HUDFrame(QWidget):
             margin + corner,
         )
 
-        # ==========================================
         # TOP RIGHT
-        # ==========================================
 
         painter.drawLine(
             width - margin - corner,
@@ -627,9 +817,7 @@ class HUDFrame(QWidget):
             margin + corner,
         )
 
-        # ==========================================
         # BOTTOM LEFT
-        # ==========================================
 
         painter.drawLine(
             margin,
@@ -645,9 +833,7 @@ class HUDFrame(QWidget):
             height - margin,
         )
 
-        # ==========================================
         # BOTTOM RIGHT
-        # ==========================================
 
         painter.drawLine(
             width - margin - corner,
@@ -663,22 +849,15 @@ class HUDFrame(QWidget):
             height - margin,
         )
 
-        # ==========================================
+        # ========================================================
         # SIDE MARKERS
-        # ==========================================
-
-        marker_pen = QPen(
-            QColor(
-                0,
-                217,
-                255,
-                45,
-            ),
-            1,
-        )
+        # ========================================================
 
         painter.setPen(
-            marker_pen
+            QPen(
+                marker_color,
+                1,
+            )
         )
 
         center_y = height // 2
@@ -697,23 +876,9 @@ class HUDFrame(QWidget):
             center_y + 40,
         )
 
-        # ==========================================
-        # SMALL HUD TICKS
-        # ==========================================
-
-        tick_color = QColor(
-            0,
-            217,
-            255,
-            65,
-        )
-
-        painter.setPen(
-            QPen(
-                tick_color,
-                1,
-            )
-        )
+        # ========================================================
+        # HUD TICKS
+        # ========================================================
 
         for x in range(
             80,
@@ -736,27 +901,54 @@ class HUDFrame(QWidget):
             )
 
 
-# ==================================================
+# ============================================================
 # MAIN WINDOW
-# ==================================================
+# ============================================================
 
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, bridge):
+    def __init__(
+        self,
+        bridge,
+    ):
         super().__init__()
 
-        # ==========================================
-        # SYSTEM TRAY
-        # ==========================================
+        # ========================================================
+        # TRAY
+        # ========================================================
 
         self.tray_icon = None
         self.tray_menu = None
         self._exiting = False
 
-        # ==========================================
+        # ========================================================
+        # SETTINGS
+        # ========================================================
+
+        self.settings_manager = SettingsManager()
+
+        # ========================================================
+        # SCALE
+        # ========================================================
+
+        self.ui_scale = 1.0
+        self._last_scale = None
+
+        self.current_theme = (
+            self.settings_manager.theme.lower()
+        )
+
+        # ========================================================
+        # ICON CACHE
+        # ========================================================
+
+        self._chat_icons = {}
+        self._orb_icons = {}
+
+        # ========================================================
         # WINDOW
-        # ==========================================
+        # ========================================================
 
         self.setWindowTitle(
             "J.A.R.V.I.S"
@@ -767,49 +959,19 @@ class MainWindow(QMainWindow):
             650,
         )
 
-        # ==========================================
-        # MAIN WINDOW STYLE
-        # ==========================================
-
-        self.setStyleSheet(
-            """
-            QMainWindow {
-                background-color: #01050A;
-            }
-
-            QWidget {
-                background: transparent;
-                color: #DDEFFF;
-            }
-
-            QLabel {
-                background: transparent;
-                color: #DDEFFF;
-            }
-            """
-        )
-
-        # ==========================================
+        # ========================================================
         # CENTRAL WIDGET
-        # ==========================================
+        # ========================================================
 
         self.central_widget = QWidget()
-
-        self.central_widget.setStyleSheet(
-            """
-            QWidget {
-                background: transparent;
-            }
-            """
-        )
 
         self.setCentralWidget(
             self.central_widget
         )
 
-        # ==========================================
+        # ========================================================
         # BACKGROUND
-        # ==========================================
+        # ========================================================
 
         self.background = BackgroundFrame(
             self.central_widget
@@ -821,11 +983,40 @@ class MainWindow(QMainWindow):
 
         self.background.lower()
 
-        # ==========================================
-        # MAIN LAYOUT
-        # ==========================================
+        # ========================================================
+        # PAGE STACK
+        # ========================================================
 
-        self.main_layout = QVBoxLayout()
+        self.page_stack = QStackedWidget(
+            self.central_widget
+        )
+
+        self.sidebar_width = 110
+
+        self.page_stack.setGeometry(
+            self.sidebar_width,
+            0,
+            max(
+                1,
+                self.central_widget.width()
+                - self.sidebar_width,
+            ),
+            self.central_widget.height(),
+        )
+
+        # ========================================================
+        # ORB PAGE
+        # ========================================================
+
+        self.home_page = QWidget()
+
+        self.page_stack.addWidget(
+            self.home_page
+        )
+
+        self.main_layout = QVBoxLayout(
+            self.home_page
+        )
 
         self.main_layout.setContentsMargins(
             38,
@@ -838,13 +1029,71 @@ class MainWindow(QMainWindow):
             10
         )
 
-        self.central_widget.setLayout(
-            self.main_layout
+        # ========================================================
+        # HEADER
+        # ========================================================
+
+        self.header = QLabel(
+            "J.A.R.V.I.S"
         )
 
-        # ==========================================
-        # HUD FRAME
-        # ==========================================
+        self.header.setAlignment(
+            Qt.AlignmentFlag.AlignCenter
+        )
+
+        self.main_layout.addWidget(
+            self.header,
+            1,
+        )
+
+        # ========================================================
+        # ORB
+        # ========================================================
+
+        self.orb = OrbWidget()
+
+        self.main_layout.addWidget(
+            self.orb,
+            7,
+        )
+
+        # ========================================================
+        # STATUS
+        # ========================================================
+
+        self.status = QLabel(
+            "STATUS  :  WAITING FOR COMMAND"
+        )
+
+        self.status.setAlignment(
+            Qt.AlignmentFlag.AlignCenter
+        )
+
+        self.main_layout.addWidget(
+            self.status,
+            1,
+        )
+
+        # ========================================================
+        # FOOTER
+        # ========================================================
+
+        self.footer = QLabel(
+            "J.A.R.V.I.S  •  SYSTEM ONLINE"
+        )
+
+        self.footer.setAlignment(
+            Qt.AlignmentFlag.AlignCenter
+        )
+
+        self.main_layout.addWidget(
+            self.footer,
+            1,
+        )
+
+        # ========================================================
+        # HUD
+        # ========================================================
 
         self.hud_frame = HUDFrame(
             self.central_widget
@@ -856,46 +1105,15 @@ class MainWindow(QMainWindow):
 
         self.hud_frame.raise_()
 
-        # ==========================================
-        # HEADER
-        # ==========================================
-
-        self.header = QLabel(
-            "J.A.R.V.I.S"
-        )
-
-        self.header.setAlignment(
-            Qt.AlignmentFlag.AlignCenter
-        )
-
-        self.header.setStyleSheet(
-            """
-            QLabel {
-                background: transparent;
-                color: #DDEFFF;
-                font-family: "Orbitron", "Eurostile", "Arial";
-                font-size: 27px;
-                font-weight: 700;
-                letter-spacing: 8px;
-            }
-            """
-        )
-
-        # ==========================================
-        # ORB
-        # ==========================================
-
-        self.orb = OrbWidget()
-
-        # ==========================================
+        # ========================================================
         # MICROPHONE
-        # ==========================================
+        # ========================================================
 
         self.microphone = Microphone()
 
-        # ==========================================
+        # ========================================================
         # BRIDGE
-        # ==========================================
+        # ========================================================
 
         self.bridge = bridge
 
@@ -911,9 +1129,9 @@ class MainWindow(QMainWindow):
             self.handle_profile_selection
         )
 
-        # ==========================================
-        # WAKE WORD OVERLAY
-        # ==========================================
+        # ========================================================
+        # OVERLAY
+        # ========================================================
 
         self.overlay = JarvisOverlay()
 
@@ -921,161 +1139,319 @@ class MainWindow(QMainWindow):
             self.show_wake_overlay
         )
 
-        # ==========================================
+        # ========================================================
         # MICROPHONE → ORB
-        # ==========================================
+        # ========================================================
 
         self.microphone.level_changed.connect(
             self.orb.set_audio_level
         )
 
-        # ==========================================
+        # ========================================================
         # MICROPHONE → OVERLAY
-        # ==========================================
+        # ========================================================
 
         self.microphone.level_changed.connect(
             self.overlay.set_audio_level
         )
 
-        # ==========================================
+        # ========================================================
         # ORB CLICK
-        # ==========================================
+        # ========================================================
 
         self.orb.clicked.connect(
             self.toggle_listening
         )
 
-        # ==========================================
-        # INITIAL ORB STATE
-        # ==========================================
-
         self.orb.set_state(
             OrbState.IDLE
         )
 
-        # ==========================================
-        # STATUS
-        # ==========================================
-
-        self.status = QLabel(
-            "STATUS  :  WAITING FOR COMMAND"
-        )
-
-        self.status.setAlignment(
-            Qt.AlignmentFlag.AlignCenter
-        )
-
-        self.status.setStyleSheet(
-            """
-            QLabel {
-                background: transparent;
-                color: #5C91B5;
-                font-family: "Orbitron", "Eurostile", "Arial";
-                font-size: 11px;
-                font-weight: 600;
-                letter-spacing: 2px;
-            }
-            """
-        )
-
-        # ==========================================
-        # CHAT
-        # ==========================================
-
-        self.chat = ConversationWidget()
-
-        # ==========================================
-        # CHAT INPUT
-        # ==========================================
-
-        self.chat_input = ChatInput()
-
-        self.chat_input.message_sent.connect(
-            self.handle_text_message
-        )
-
-        # ==========================================
-        # FOOTER
-        # ==========================================
-
-        self.footer = QLabel(
-            "J.A.R.V.I.S  •  SYSTEM ONLINE"
-        )
-
-        self.footer.setAlignment(
-            Qt.AlignmentFlag.AlignCenter
-        )
-
-        self.footer.setStyleSheet(
-            """
-            QLabel {
-                background: transparent;
-                color: #34546B;
-                font-family: "Orbitron", "Eurostile", "Arial";
-                font-size: 10px;
-                font-weight: 600;
-                letter-spacing: 3px;
-            }
-            """
-        )
-
-        # ==========================================
-        # ADD WIDGETS
-        # ==========================================
-
-        self.main_layout.addWidget(
-            self.header,
-            1,
-        )
-
-        self.main_layout.addWidget(
-            self.orb,
-            6,
-        )
-
-        self.main_layout.addWidget(
-            self.status,
-            1,
-        )
-
-        self.main_layout.addWidget(
-            self.chat,
-            2,
-        )
-
-        self.main_layout.addWidget(
-            self.chat_input,
-        )
-
-        self.main_layout.addWidget(
-            self.footer,
-            1,
-        )
-
-        # ==========================================
+        # ========================================================
         # PROFILE SELECTOR
-        # ==========================================
+        # ========================================================
 
         self.profile_selector = None
 
-        # ==========================================
-        # SYSTEM TRAY
-        # ==========================================
+        # ========================================================
+        # CHAT PAGE
+        # ========================================================
+
+        self.chat_screen = ChatScreen()
+
+        self.chat_screen.chat_input.message_sent.connect(
+            self.handle_text_message
+        )
+
+        self.page_stack.addWidget(
+            self.chat_screen
+        )
+
+        # Compatibility alias used elsewhere.
+        self.chat = self.chat_screen.conversation
+
+        # ========================================================
+        # SETTINGS PAGE
+        # ========================================================
+
+        self.settings_screen = SettingsScreen(
+            self.settings_manager,
+            self,
+        )
+
+        self.page_stack.addWidget(
+            self.settings_screen
+        )
+
+        self.settings_screen.theme_changed.connect(
+            self.apply_theme
+        )
+
+        # Overlay setting must update the running application.
+        if hasattr(
+            self.settings_screen,
+            "overlay_checkbox",
+        ):
+            self.settings_screen.overlay_checkbox.toggled.connect(
+                self.handle_overlay_setting_changed
+            )
+
+        # ========================================================
+        # SIDEBAR
+        # ========================================================
+
+        self.sidebar = QFrame(
+            self.central_widget
+        )
+
+        self.sidebar.setObjectName(
+            "sidebar"
+        )
+
+        self.sidebar.setGeometry(
+            0,
+            0,
+            self.sidebar_width,
+            self.central_widget.height(),
+        )
+
+        self.sidebar_layout = QVBoxLayout(
+            self.sidebar
+        )
+
+        self.sidebar_layout.setContentsMargins(
+            10,
+            18,
+            10,
+            18,
+        )
+
+        self.sidebar_layout.setSpacing(
+            12
+        )
+
+        self.sidebar_layout.setAlignment(
+            Qt.AlignmentFlag.AlignTop
+            | Qt.AlignmentFlag.AlignHCenter
+        )
+
+        # ========================================================
+        # SIDEBAR BRAND
+        # ========================================================
+
+        self.sidebar_brand = QLabel(
+            "J.A.R.V.I.S"
+        )
+
+        self.sidebar_brand.setAlignment(
+            Qt.AlignmentFlag.AlignCenter
+        )
+
+        self.sidebar_brand.setMinimumWidth(
+            self.sidebar_width - 20
+        )
+
+        self.sidebar_brand.setMaximumWidth(
+            self.sidebar_width - 20
+        )
+
+        self.sidebar_layout.addWidget(
+            self.sidebar_brand,
+            0,
+            Qt.AlignmentFlag.AlignHCenter,
+        )
+
+        self.sidebar_layout.addSpacing(
+            25
+        )
+
+        # ========================================================
+        # SIDEBAR BUTTON CONSTANTS
+        # ========================================================
+
+        self.nav_button_size = 52
+        self.nav_icon_size = 30
+
+        # ========================================================
+        # ORB NAV
+        # ========================================================
+
+        self.orb_nav_button = QToolButton()
+
+        self.orb_nav_button.setToolTip(
+            "Orb"
+        )
+
+        self.orb_nav_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        self.orb_nav_button.setFixedSize(
+            self.nav_button_size,
+            self.nav_button_size,
+        )
+
+        self.orb_icon_path = (
+            Path(__file__).resolve()
+            .parents[2]
+            / "assets"
+            / "icons"
+            / "orb_icon.png"
+        )
+
+        self.orb_nav_button.clicked.connect(
+            self.show_home_page
+        )
+
+        self.sidebar_layout.addWidget(
+            self.orb_nav_button,
+            0,
+            Qt.AlignmentFlag.AlignHCenter,
+        )
+
+        # ========================================================
+        # CHAT NAV
+        # ========================================================
+
+        self.chat_nav_button = QToolButton()
+
+        self.chat_nav_button.setToolTip(
+            "Conversation"
+        )
+
+        self.chat_nav_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        self.chat_nav_button.setFixedSize(
+            self.nav_button_size,
+            self.nav_button_size,
+        )
+
+        self.chat_icon_path = (
+            Path(__file__).resolve()
+            .parents[2]
+            / "assets"
+            / "icons"
+            / "chat_icon.png"
+        )
+
+        self.chat_nav_button.clicked.connect(
+            self.show_chat_page
+        )
+
+        self.sidebar_layout.addWidget(
+            self.chat_nav_button,
+            0,
+            Qt.AlignmentFlag.AlignHCenter,
+        )
+
+        # ========================================================
+        # SETTINGS NAV
+        # ========================================================
+
+        self.settings_nav_button = QToolButton()
+
+        self.settings_nav_button.setToolTip(
+            "Settings"
+        )
+
+        self.settings_nav_button.setCursor(
+            Qt.CursorShape.PointingHandCursor
+        )
+
+        self.settings_nav_button.setFixedSize(
+            self.nav_button_size,
+            self.nav_button_size,
+        )
+
+        self.settings_nav_button.setText(
+            "⚙"
+        )
+
+        self.settings_nav_button.clicked.connect(
+            self.show_settings_page
+        )
+
+        self.sidebar_layout.addWidget(
+            self.settings_nav_button,
+            0,
+            Qt.AlignmentFlag.AlignHCenter,
+        )
+
+        self.sidebar_layout.addStretch()
+
+        # ========================================================
+        # INITIAL ICON GENERATION
+        # ========================================================
+
+        self.update_chat_icon_theme(
+            self.current_theme
+        )
+
+        self.update_orb_icon_theme(
+            self.current_theme
+        )
+
+        # ========================================================
+        # APPLY THEME
+        # ========================================================
+
+        self.apply_theme(
+            self.current_theme
+        )
+
+        # ========================================================
+        # INITIAL PAGE
+        # ========================================================
+
+        self.show_home_page()
+
+        # ========================================================
+        # TRAY
+        # ========================================================
 
         self.setup_system_tray()
 
-    # ==================================================
-    # SYSTEM TRAY SETUP
-    # ==================================================
+        # ========================================================
+        # SCALE
+        # ========================================================
 
-    def setup_system_tray(self):
+        self.update_ui_scale(
+            force=True
+        )
+
+    # ============================================================
+    # TRAY
+    # ============================================================
+
+    def setup_system_tray(
+        self,
+    ):
 
         if not QSystemTrayIcon.isSystemTrayAvailable():
-            return
 
-        # ==========================================
-        # CREATE TRAY ICON
-        # ==========================================
+            return
 
         pixmap = QPixmap(
             64,
@@ -1094,7 +1470,6 @@ class MainWindow(QMainWindow):
             QPainter.RenderHint.Antialiasing
         )
 
-        # Outer orb
         painter.setPen(
             QPen(
                 QColor(
@@ -1122,7 +1497,6 @@ class MainWindow(QMainWindow):
             48,
         )
 
-        # Inner orb
         painter.setPen(
             QPen(
                 QColor(
@@ -1161,10 +1535,6 @@ class MainWindow(QMainWindow):
             "J.A.R.V.I.S"
         )
 
-        # ==========================================
-        # TRAY MENU
-        # ==========================================
-
         self.tray_menu = QMenu()
 
         open_action = self.tray_menu.addAction(
@@ -1197,32 +1567,32 @@ class MainWindow(QMainWindow):
             self.tray_menu
         )
 
-        # ==========================================
-        # TRAY ACTIVATION
-        # ==========================================
-
         self.tray_icon.activated.connect(
             self.handle_tray_activation
         )
 
         self.tray_icon.show()
 
-    # ==================================================
-    # RESTORE FROM TRAY
-    # ==================================================
+    # ============================================================
+    # TRAY RESTORE
+    # ============================================================
 
-    def restore_from_tray(self):
+    def restore_from_tray(
+        self,
+    ):
 
         self.show()
         self.showNormal()
         self.raise_()
         self.activateWindow()
 
-    # ==================================================
-    # START LISTENING FROM TRAY
-    # ==================================================
+    # ============================================================
+    # TRAY LISTEN
+    # ============================================================
 
-    def start_listening_from_tray(self):
+    def start_listening_from_tray(
+        self,
+    ):
 
         self.restore_from_tray()
 
@@ -1233,32 +1603,25 @@ class MainWindow(QMainWindow):
 
             self.toggle_listening()
 
-    # ==================================================
-    # HANDLE TRAY ACTIVATION
-    # ==================================================
+    # ============================================================
+    # TRAY ACTIVATION
+    # ============================================================
 
     def handle_tray_activation(
         self,
         reason,
     ):
 
-        if (
-            reason
-            == QSystemTrayIcon.ActivationReason.Trigger
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
         ):
 
             self.restore_from_tray()
 
-        elif (
-            reason
-            == QSystemTrayIcon.ActivationReason.DoubleClick
-        ):
-
-            self.restore_from_tray()
-
-    # ==================================================
-    # CLOSE WINDOW
-    # ==================================================
+    # ============================================================
+    # CLOSE
+    # ============================================================
 
     def closeEvent(
         self,
@@ -1266,7 +1629,9 @@ class MainWindow(QMainWindow):
     ):
 
         if self._exiting:
+
             event.accept()
+
             return
 
         if self.tray_icon is not None:
@@ -1286,22 +1651,968 @@ class MainWindow(QMainWindow):
 
             event.accept()
 
-    # ==================================================
-    # EXIT FROM TRAY
-    # ==================================================
+    # ============================================================
+    # EXIT
+    # ============================================================
 
-    def exit_from_tray(self):
+    def exit_from_tray(
+        self,
+    ):
 
         self._exiting = True
 
         if self.tray_icon is not None:
+
             self.tray_icon.hide()
 
         QApplication.quit()
 
-    # ==================================================
-    # RESIZE HUD
-    # ==================================================
+    # ============================================================
+    # NAVIGATION
+    # ============================================================
+
+    def set_active_nav(
+        self,
+        active_button,
+    ):
+
+        buttons = (
+            self.orb_nav_button,
+            self.chat_nav_button,
+            self.settings_nav_button,
+        )
+
+        for button in buttons:
+
+            button.setProperty(
+                "active",
+                button is active_button,
+            )
+
+            button.style().unpolish(
+                button
+            )
+
+            button.style().polish(
+                button
+            )
+
+            button.update()
+
+    def show_home_page(
+        self,
+    ):
+
+        self.page_stack.setCurrentWidget(
+            self.home_page
+        )
+
+        self.set_active_nav(
+            self.orb_nav_button
+        )
+
+    def show_chat_page(
+        self,
+    ):
+
+        self.page_stack.setCurrentWidget(
+            self.chat_screen
+        )
+
+        self.set_active_nav(
+            self.chat_nav_button
+        )
+
+    def show_settings_page(
+        self,
+    ):
+
+        self.page_stack.setCurrentWidget(
+            self.settings_screen
+        )
+
+        self.set_active_nav(
+            self.settings_nav_button
+        )
+
+    # ============================================================
+    # CHAT ICON THEME
+    # ============================================================
+
+    def update_chat_icon_theme(
+        self,
+        theme,
+    ):
+
+        if not hasattr(
+            self,
+            "chat_nav_button",
+        ):
+            return
+
+        theme = theme.lower()
+
+        if theme in self._chat_icons:
+            self.chat_nav_button.setIcon(
+                self._chat_icons[theme]
+            )
+            return
+
+        icon_color = QColor(
+            "#008FB8"
+            if theme == "light"
+            else "#00D9FF"
+        )
+
+        source = QImage(
+            str(self.chat_icon_path)
+        )
+
+        if source.isNull():
+            print(
+                "JARVIS: ERROR - Chat icon could not be loaded:",
+                self.chat_icon_path,
+            )
+            return
+
+        # Work on a tiny cached raster. The sidebar icon is only
+        # around 30 px, so processing a 256 px source is more than
+        # enough and avoids UI freezes during theme changes.
+        source = source.scaled(
+            256,
+            256,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.FastTransformation,
+        ).convertToFormat(
+            QImage.Format.Format_ARGB32
+        )
+
+        colored = QImage(
+            source.size(),
+            QImage.Format.Format_ARGB32,
+        )
+        colored.fill(Qt.GlobalColor.transparent)
+
+        red = icon_color.red()
+        green = icon_color.green()
+        blue = icon_color.blue()
+
+        for y in range(source.height()):
+            for x in range(source.width()):
+                pixel = source.pixel(x, y)
+
+                alpha = (pixel >> 24) & 0xFF
+                if alpha == 0:
+                    continue
+
+                r = (pixel >> 16) & 0xFF
+                g = (pixel >> 8) & 0xFF
+                b = pixel & 0xFF
+
+                luminance = (
+                    299 * r +
+                    587 * g +
+                    114 * b
+                ) // 1000
+
+                darkness = 255 - luminance
+                final_alpha = (alpha * darkness) // 255
+
+                if final_alpha < 8:
+                    continue
+
+                colored.setPixel(
+                    x,
+                    y,
+                    (
+                        (final_alpha << 24)
+                        | (red << 16)
+                        | (green << 8)
+                        | blue
+                    ),
+                )
+
+        icon = QIcon(
+            QPixmap.fromImage(colored)
+        )
+
+        self._chat_icons[theme] = icon
+        self.chat_nav_button.setIcon(icon)
+
+    # ============================================================
+    # ORB ICON THEME
+    # ============================================================
+
+    def update_orb_icon_theme(
+        self,
+        theme,
+    ):
+
+        if not hasattr(
+            self,
+            "orb_nav_button",
+        ):
+            return
+
+        theme = theme.lower()
+
+        if theme in self._orb_icons:
+            self.orb_nav_button.setIcon(
+                self._orb_icons[theme]
+            )
+            return
+
+        # The light theme uses a deliberately darker cyan so the
+        # supplied Orb artwork does not disappear into the light UI.
+        icon_color = QColor(
+            "#00536B"
+            if theme == "light"
+            else "#00D9FF"
+        )
+
+        source = QImage(
+            str(self.orb_icon_path)
+        )
+
+        if source.isNull():
+            print(
+                "JARVIS: ERROR - Orb icon could not be loaded:",
+                self.orb_icon_path,
+            )
+            return
+
+        # Downsample BEFORE pixel analysis. The original artwork is
+        # large, but the sidebar icon is small. This removes the
+        # several-million-pixel processing delay on theme changes.
+        source = source.scaled(
+            256,
+            256,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.FastTransformation,
+        ).convertToFormat(
+            QImage.Format.Format_ARGB32
+        )
+
+        width = source.width()
+        height = source.height()
+
+        mask = QImage(
+            width,
+            height,
+            QImage.Format.Format_Grayscale8,
+        )
+        mask.fill(0)
+
+        min_x = width
+        min_y = height
+        max_x = -1
+        max_y = -1
+
+        for y in range(height):
+            for x in range(width):
+                pixel = source.pixel(x, y)
+
+                alpha = (pixel >> 24) & 0xFF
+                if alpha == 0:
+                    continue
+
+                r = (pixel >> 16) & 0xFF
+                g = (pixel >> 8) & 0xFF
+                b = pixel & 0xFF
+
+                maximum = max(r, g, b)
+                minimum = min(r, g, b)
+                saturation = maximum - minimum
+
+                luminance = (
+                    299 * r +
+                    587 * g +
+                    114 * b
+                ) // 1000
+
+                # Keep cyan/blue artwork and dark linework while
+                # rejecting the pale checkerboard background.
+                if (
+                    saturation >= 18
+                    or luminance <= 155
+                ):
+                    color_alpha = min(
+                        255,
+                        saturation * 6,
+                    )
+
+                    dark_alpha = max(
+                        0,
+                        min(
+                            255,
+                            (175 - luminance) * 5,
+                        ),
+                    )
+
+                    final_alpha = max(
+                        color_alpha,
+                        dark_alpha,
+                    )
+
+                    if final_alpha < 25:
+                        continue
+
+                    mask.setPixel(
+                        x,
+                        y,
+                        final_alpha,
+                    )
+
+                    min_x = min(min_x, x)
+                    min_y = min(min_y, y)
+                    max_x = max(max_x, x)
+                    max_y = max(max_y, y)
+
+        if (
+            max_x < min_x
+            or max_y < min_y
+        ):
+            print(
+                "JARVIS: ERROR - Orb icon foreground could not be detected:",
+                self.orb_icon_path,
+            )
+            return
+
+        padding = max(
+            2,
+            int(
+                min(width, height) * 0.015
+            ),
+        )
+
+        min_x = max(0, min_x - padding)
+        min_y = max(0, min_y - padding)
+        max_x = min(width - 1, max_x + padding)
+        max_y = min(height - 1, max_y + padding)
+
+        cropped_mask = mask.copy(
+            min_x,
+            min_y,
+            max_x - min_x + 1,
+            max_y - min_y + 1,
+        )
+
+        colored = QImage(
+            cropped_mask.size(),
+            QImage.Format.Format_ARGB32,
+        )
+        colored.fill(Qt.GlobalColor.transparent)
+
+        red = icon_color.red()
+        green = icon_color.green()
+        blue = icon_color.blue()
+
+        for y in range(cropped_mask.height()):
+            for x in range(cropped_mask.width()):
+                final_alpha = (
+                    cropped_mask.pixel(x, y) & 0xFF
+                )
+
+                if final_alpha == 0:
+                    continue
+
+                colored.setPixel(
+                    x,
+                    y,
+                    (
+                        (final_alpha << 24)
+                        | (red << 16)
+                        | (green << 8)
+                        | blue
+                    ),
+                )
+
+        icon = QIcon(
+            QPixmap.fromImage(colored)
+        )
+
+        self._orb_icons[theme] = icon
+        self.orb_nav_button.setIcon(icon)
+
+    # ============================================================
+    # THEME
+    # ============================================================
+
+    def apply_theme(
+        self,
+        theme,
+    ):
+
+        theme = theme.lower()
+
+        self.current_theme = theme
+
+        # ========================================================
+        # ICONS
+        # ========================================================
+
+        self.update_chat_icon_theme(
+            theme
+        )
+
+        self.update_orb_icon_theme(
+            theme
+        )
+
+        # ========================================================
+        # ORB
+        # ========================================================
+
+        if hasattr(
+            self,
+            "orb",
+        ):
+
+            self.orb.set_theme(
+                theme
+            )
+
+        # ========================================================
+        # CHAT SCREEN
+        # ========================================================
+
+        if hasattr(
+            self,
+            "chat_screen",
+        ):
+
+            self.chat_screen.apply_theme(
+                theme
+            )
+
+        # ========================================================
+        # SETTINGS
+        # ========================================================
+
+        if hasattr(
+            self,
+            "settings_screen",
+        ):
+
+            self.settings_screen.apply_theme(
+                theme
+            )
+
+        # ========================================================
+        # BACKGROUND
+        # ========================================================
+
+        if hasattr(
+            self,
+            "background",
+        ):
+
+            self.background.set_theme(
+                theme
+            )
+
+        # ========================================================
+        # HUD
+        # ========================================================
+
+        if hasattr(
+            self,
+            "hud_frame",
+        ):
+
+            self.hud_frame.set_theme(
+                theme
+            )
+
+        # ========================================================
+        # MAIN WINDOW
+        # ========================================================
+
+        if theme == "light":
+
+            self.setStyleSheet(
+                """
+                QMainWindow {
+                    background-color: #E8F7FB;
+                }
+
+                QWidget {
+                    background: transparent;
+                    color: #06202D;
+                }
+
+                QLabel {
+                    background: transparent;
+                    color: #06202D;
+                }
+                """
+            )
+
+        else:
+
+            self.setStyleSheet(
+                """
+                QMainWindow {
+                    background-color: #01050A;
+                }
+
+                QWidget {
+                    background: transparent;
+                    color: #DDEFFF;
+                }
+
+                QLabel {
+                    background: transparent;
+                    color: #DDEFFF;
+                }
+                """
+            )
+
+        # ========================================================
+        # SIDEBAR STYLE
+        # ========================================================
+
+        if hasattr(
+            self,
+            "sidebar",
+        ):
+
+            self.update_sidebar_style(
+                theme
+            )
+
+        # ========================================================
+        # SCALE
+        # ========================================================
+
+        self.update_ui_scale(
+            force=True
+        )
+
+    # ============================================================
+    # SIDEBAR STYLE
+    # ============================================================
+
+    def update_sidebar_style(
+        self,
+        theme=None,
+    ):
+
+        theme = (
+            theme
+            or self.current_theme
+            or self.settings_manager.theme
+        ).lower()
+
+        if theme == "light":
+
+            self.sidebar.setStyleSheet(
+                """
+                QFrame#sidebar {
+                    background: #DCEFF4;
+                    border-right: 1px solid #69B5C9;
+                }
+
+                QLabel {
+                    background: transparent;
+                    color: #08202C;
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: 2px;
+                }
+
+                QToolButton {
+                    background: transparent;
+                    color: #477B8C;
+                    border: 1px solid transparent;
+                    border-radius: 9px;
+                }
+
+                QToolButton:hover {
+                    background: #C8EAF2;
+                    color: #008FB8;
+                    border: 1px solid #69B5C9;
+                }
+
+                QToolButton[active="true"] {
+                    background: #C2EAF3;
+                    color: #008FB8;
+                    border: 1px solid #00A8D6;
+                }
+                """
+            )
+
+        else:
+
+            self.sidebar.setStyleSheet(
+                """
+                QFrame#sidebar {
+                    background: #020912;
+                    border-right: 1px solid #16445A;
+                }
+
+                QLabel {
+                    background: transparent;
+                    color: #DDEFFF;
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: 2px;
+                }
+
+                QToolButton {
+                    background: transparent;
+                    color: #5C91B5;
+                    border: 1px solid transparent;
+                    border-radius: 9px;
+                }
+
+                QToolButton:hover {
+                    background: #061B28;
+                    color: #00D9FF;
+                    border: 1px solid #126486;
+                }
+
+                QToolButton[active="true"] {
+                    background: #062638;
+                    color: #00D9FF;
+                    border: 1px solid #00D9FF;
+                }
+                """
+            )
+
+    # ============================================================
+    # RESPONSIVE SCALE
+    # ============================================================
+
+    def update_ui_scale(
+        self,
+        force=False,
+    ):
+
+        width = max(1, self.width())
+        height = max(1, self.height())
+
+        scale_x = width / 1000.0
+        scale_y = height / 650.0
+
+        scale = min(
+            scale_x,
+            scale_y,
+        )
+
+        scale = max(
+            0.80,
+            min(
+                scale,
+                1.80,
+            ),
+        )
+
+        # Do not repeatedly rebuild stylesheets while Qt is emitting
+        # several resize events during maximize/minimize.
+        if (
+            not force
+            and self._last_scale is not None
+            and abs(scale - self._last_scale) < 0.01
+        ):
+            return
+
+        self._last_scale = scale
+        self.ui_scale = scale
+
+        # ========================================================
+        # HEADER
+        # ========================================================
+
+        header_size = max(
+            18,
+            int(27 * scale),
+        )
+
+        header_spacing = max(
+            2,
+            int(8 * scale),
+        )
+
+        header_color = (
+            "#08202C"
+            if self.current_theme == "light"
+            else "#DDEFFF"
+        )
+
+        self.header.setStyleSheet(
+            f"""
+            QLabel {{
+                background: transparent;
+                color: {header_color};
+                font-family:
+                    "Orbitron",
+                    "Eurostile",
+                    "Arial";
+                font-size: {header_size}px;
+                font-weight: 700;
+                letter-spacing: {header_spacing}px;
+            }}
+            """
+        )
+
+        # ========================================================
+        # STATUS
+        # ========================================================
+
+        status_size = max(
+            9,
+            int(11 * scale),
+        )
+
+        status_spacing = max(
+            1,
+            int(2 * scale),
+        )
+
+        status_color = (
+            "#26728A"
+            if self.current_theme == "light"
+            else "#5C91B5"
+        )
+
+        self.status.setStyleSheet(
+            f"""
+            QLabel {{
+                background: transparent;
+                color: {status_color};
+                font-family:
+                    "Orbitron",
+                    "Eurostile",
+                    "Arial";
+                font-size: {status_size}px;
+                font-weight: 600;
+                letter-spacing: {status_spacing}px;
+            }}
+            """
+        )
+
+        # ========================================================
+        # FOOTER
+        # ========================================================
+
+        footer_size = max(
+            8,
+            int(10 * scale),
+        )
+
+        footer_spacing = max(
+            1,
+            int(3 * scale),
+        )
+
+        footer_color = (
+            "#47849A"
+            if self.current_theme == "light"
+            else "#34546B"
+        )
+
+        self.footer.setStyleSheet(
+            f"""
+            QLabel {{
+                background: transparent;
+                color: {footer_color};
+                font-family:
+                    "Orbitron",
+                    "Eurostile",
+                    "Arial";
+                font-size: {footer_size}px;
+                font-weight: 600;
+                letter-spacing: {footer_spacing}px;
+            }}
+            """
+        )
+
+        # ========================================================
+        # ORB PAGE LAYOUT
+        # ========================================================
+
+        self.main_layout.setContentsMargins(
+            max(24, int(38 * scale)),
+            max(18, int(28 * scale)),
+            max(24, int(38 * scale)),
+            max(18, int(24 * scale)),
+        )
+
+        self.main_layout.setSpacing(
+            max(6, int(10 * scale))
+        )
+
+        # ========================================================
+        # SIDEBAR
+        # ========================================================
+
+        if hasattr(self, "sidebar"):
+
+            self.sidebar.setGeometry(
+                0,
+                0,
+                self.sidebar_width,
+                self.central_widget.height(),
+            )
+
+            nav_size = max(
+                44,
+                int(52 * scale),
+            )
+
+            icon_size = max(
+                24,
+                int(30 * scale),
+            )
+
+            for button in (
+                self.orb_nav_button,
+                self.chat_nav_button,
+                self.settings_nav_button,
+            ):
+                button.setFixedSize(
+                    nav_size,
+                    nav_size,
+                )
+
+                button.setIconSize(
+                    QSize(
+                        icon_size,
+                        icon_size,
+                    )
+                )
+
+            # The Settings icon is a glyph, so it must be scaled
+            # independently from PNG icons.
+            settings_font = max(
+                18,
+                int(23 * scale),
+            )
+
+            if self.current_theme == "light":
+                normal = "#477B8C"
+                hover_bg = "#C8EAF2"
+                hover = "#008FB8"
+                hover_border = "#69B5C9"
+                active_bg = "#C2EAF3"
+                active = "#008FB8"
+                active_border = "#00A8D6"
+            else:
+                normal = "#5C91B5"
+                hover_bg = "#061B28"
+                hover = "#00D9FF"
+                hover_border = "#126486"
+                active_bg = "#062638"
+                active = "#00D9FF"
+                active_border = "#00D9FF"
+
+            for button in (
+                self.orb_nav_button,
+                self.chat_nav_button,
+            ):
+                button.setStyleSheet(
+                    f"""
+                    QToolButton {{
+                        background: transparent;
+                        color: {normal};
+                        border: 1px solid transparent;
+                        border-radius: 9px;
+                    }}
+
+                    QToolButton:hover {{
+                        background: {hover_bg};
+                        color: {hover};
+                        border: 1px solid {hover_border};
+                    }}
+
+                    QToolButton[active="true"] {{
+                        background: {active_bg};
+                        color: {active};
+                        border: 1px solid {active_border};
+                    }}
+                    """
+                )
+
+            self.settings_nav_button.setStyleSheet(
+                f"""
+                QToolButton {{
+                    background: transparent;
+                    color: {normal};
+                    border: 1px solid transparent;
+                    border-radius: 9px;
+                    font-size: {settings_font}px;
+                    font-family: "Segoe UI Symbol", "Segoe UI", Arial;
+                    padding: 0px;
+                }}
+
+                QToolButton:hover {{
+                    background: {hover_bg};
+                    color: {hover};
+                    border: 1px solid {hover_border};
+                }}
+
+                QToolButton[active="true"] {{
+                    background: {active_bg};
+                    color: {active};
+                    border: 1px solid {active_border};
+                }}
+                """
+            )
+
+            # Keep the brand safely inside the 110 px sidebar even
+            # at small window sizes. No clipping of J.A.R.V.I.S.
+            brand_font = max(
+                7,
+                min(
+                    10,
+                    int(10 * scale),
+                ),
+            )
+
+            brand_spacing = max(
+                1,
+                min(
+                    2,
+                    int(2 * scale),
+                ),
+            )
+
+            self.sidebar_brand.setMinimumWidth(
+                self.sidebar_width - 20
+            )
+            self.sidebar_brand.setMaximumWidth(
+                self.sidebar_width - 20
+            )
+            self.sidebar_brand.setMinimumHeight(24)
+
+            brand_color = (
+                "#08202C"
+                if self.current_theme == "light"
+                else "#DDEFFF"
+            )
+
+            self.sidebar_brand.setStyleSheet(
+                f"""
+                QLabel {{
+                    background: transparent;
+                    color: {brand_color};
+                    font-family:
+                        "Orbitron",
+                        "Eurostile",
+                        "Arial";
+                    font-size: {brand_font}px;
+                    font-weight: 700;
+                    letter-spacing: {brand_spacing}px;
+                    padding: 0px;
+                    margin: 0px;
+                }}
+                """
+            )
+
+    # ============================================================
+    # RESIZE
+    # ============================================================
 
     def resizeEvent(
         self,
@@ -1330,16 +2641,48 @@ class MainWindow(QMainWindow):
                 self.central_widget.rect()
             )
 
-    # ==================================================
-    # HANDLE TEXT MESSAGE
-    # ==================================================
+        if hasattr(
+            self,
+            "sidebar",
+        ):
+
+            self.sidebar.setGeometry(
+                0,
+                0,
+                self.sidebar_width,
+                self.central_widget.height(),
+            )
+
+        if hasattr(
+            self,
+            "page_stack",
+        ):
+
+            self.page_stack.setGeometry(
+                self.sidebar_width,
+                0,
+                max(
+                    1,
+                    self.central_widget.width()
+                    - self.sidebar_width,
+                ),
+                self.central_widget.height(),
+            )
+
+        # Resize only updates geometry/font/icon display sizes.
+        # PNG processing is cached and never happens here.
+        self.update_ui_scale()
+
+    # ============================================================
+    # TEXT MESSAGE
+    # ============================================================
 
     def handle_text_message(
         self,
         message,
     ):
 
-        self.chat.add_user_message(
+        self.chat_screen.conversation.add_user_message(
             message
         )
 
@@ -1347,9 +2690,9 @@ class MainWindow(QMainWindow):
             message
         )
 
-    # ==================================================
-    # HANDLE PROFILE SELECTION REQUEST
-    # ==================================================
+    # ============================================================
+    # PROFILE SELECTION
+    # ============================================================
 
     def handle_profile_selection(
         self,
@@ -1369,9 +2712,9 @@ class MainWindow(QMainWindow):
 
         self.profile_selector.exec()
 
-    # ==================================================
-    # HANDLE SELECTED PROFILE
-    # ==================================================
+    # ============================================================
+    # PROFILE SELECTED
+    # ============================================================
 
     def handle_profile_selected(
         self,
@@ -1382,17 +2725,57 @@ class MainWindow(QMainWindow):
             profile_directory
         )
 
-    # ==================================================
-    # SHOW WAKE OVERLAY
-    # ==================================================
+    # ============================================================
+    # OVERLAY SETTING
+    # ============================================================
 
-    def show_wake_overlay(self):
+    def handle_overlay_setting_changed(
+        self,
+        enabled,
+    ):
 
-        active_window = QApplication.activeWindow()
+        enabled = bool(
+            enabled
+        )
 
-        # Keep the main JARVIS interface uncluttered.
-        # The floating indicator is only useful when
-        # the user is interacting with another app.
+        try:
+
+            self.settings_manager.overlay_enabled = enabled
+
+        except (
+            AttributeError,
+            TypeError,
+        ):
+
+            pass
+
+        if not enabled:
+
+            self.overlay.hide_overlay()
+
+            return
+
+        if self.orb.state == OrbState.LISTENING:
+
+            self.show_wake_overlay()
+
+    # ============================================================
+    # WAKE OVERLAY
+    # ============================================================
+
+    def show_wake_overlay(
+        self,
+    ):
+
+        if not self.settings_manager.overlay_enabled:
+
+            self.overlay.hide_overlay()
+
+            return
+
+        active_window = (
+            QApplication.activeWindow()
+        )
 
         if (
             active_window is self
@@ -1410,11 +2793,13 @@ class MainWindow(QMainWindow):
 
         self.overlay.show_overlay()
 
-    # ==================================================
+    # ============================================================
     # TOGGLE LISTENING
-    # ==================================================
+    # ============================================================
 
-    def toggle_listening(self):
+    def toggle_listening(
+        self,
+    ):
 
         if self.orb.state in (
             OrbState.IDLE,
@@ -1444,9 +2829,9 @@ class MainWindow(QMainWindow):
                 "STATUS  :  WAITING FOR COMMAND"
             )
 
-    # ==================================================
-    # HANDLE JARVIS STATE
-    # ==================================================
+    # ============================================================
+    # JARVIS STATE
+    # ============================================================
 
     def handle_state_change(
         self,
@@ -1467,21 +2852,19 @@ class MainWindow(QMainWindow):
                 f"STATUS  :  {state.upper()}"
             )
 
-            # ==========================================
-            # OVERLAY LIFECYCLE
-            # ==========================================
-
             if (
                 orb_state
                 == OrbState.LISTENING
             ):
 
                 self.microphone.start()
+
                 self.show_wake_overlay()
 
             else:
 
                 self.microphone.stop()
+
                 self.overlay.hide_overlay()
 
         except ValueError:
@@ -1490,20 +2873,15 @@ class MainWindow(QMainWindow):
                 f"STATUS  :  {state.upper()}"
             )
 
-    # ==================================================
-    # HANDLE JARVIS RESPONSE
-    # ==================================================
+    # ============================================================
+    # JARVIS RESPONSE
+    # ============================================================
 
     def handle_jarvis_response(
         self,
         response,
     ):
 
-        self.chat.add_jarvis_message(
+        self.chat_screen.conversation.add_jarvis_message(
             response
         )
-
-
-# ==================================================
-# END OF FILE
-# ==================================================

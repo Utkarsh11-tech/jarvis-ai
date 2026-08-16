@@ -10,11 +10,18 @@ from PySide6.QtWidgets import (
 
 class ChatInput(QWidget):
 
-    # Emitted when the user sends a message
     message_sent = Signal(str)
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(
+        self,
+        parent=None
+    ):
+
+        super().__init__(
+            parent
+        )
+
+        self.theme = "dark"
 
         # ==========================================
         # INPUT
@@ -30,13 +37,12 @@ class ChatInput(QWidget):
             48
         )
 
-        # Pressing Enter sends the message
         self.input.returnPressed.connect(
             self.send_message
         )
 
         # ==========================================
-        # ARROW BUTTON
+        # SEND BUTTON
         # ==========================================
 
         self.send_button = QPushButton(
@@ -82,77 +88,160 @@ class ChatInput(QWidget):
         )
 
         # ==========================================
-        # HUD STYLE
+        # INITIAL THEME
         # ==========================================
 
-        self.setStyleSheet(
-            """
-            QLineEdit {
-                background-color: #030A12;
-                color: #DDEFFF;
-
-                border: 1px solid #126486;
-                border-radius: 12px;
-
-                padding-left: 18px;
-                padding-right: 18px;
-
-                font-family:
-                    "Orbitron",
-                    "Eurostile",
-                    "Arial";
-
-                font-size: 13px;
-                letter-spacing: 1px;
-            }
-
-            QLineEdit:hover {
-                border: 1px solid #1788B5;
-            }
-
-            QLineEdit:focus {
-                border: 1px solid #00D9FF;
-            }
-
-            QPushButton {
-                background-color: #030A12;
-
-                color: #00D9FF;
-
-                border: 1px solid #126486;
-                border-radius: 12px;
-
-                font-size: 23px;
-                font-weight: bold;
-            }
-
-            QPushButton:hover {
-                background-color: #061522;
-
-                color: #6FEAFF;
-
-                border: 1px solid #00D9FF;
-            }
-
-            QPushButton:pressed {
-                background-color: #0A2638;
-
-                color: #FFFFFF;
-
-                border: 1px solid #00D9FF;
-            }
-            """
+        self.apply_theme(
+            "dark"
         )
 
     # ==================================================
-    # SEND MESSAGE
+    # THEME
     # ==================================================
 
-    def send_message(self):
+    def apply_theme(
+        self,
+        theme
+    ):
 
-        message = self.input.text().strip()
+        self.theme = theme.lower()
 
-        # Don't send empty messages
+        if self.theme == "light":
+
+            self.setStyleSheet(
+                """
+                QLineEdit {
+                    background-color: #F3FCFE;
+                    color: #08202C;
+
+                    border: 1px solid #4BA9C4;
+                    border-radius: 12px;
+
+                    padding-left: 18px;
+                    padding-right: 18px;
+
+                    font-family:
+                        "Orbitron",
+                        "Eurostile",
+                        "Arial";
+
+                    font-size: 13px;
+                    letter-spacing: 1px;
+                }
+
+                QLineEdit:hover {
+                    border: 1px solid #1788B5;
+                }
+
+                QLineEdit:focus {
+                    border: 1px solid #009CC5;
+                }
+
+                QPushButton {
+                    background-color: #F3FCFE;
+
+                    color: #007B9E;
+
+                    border: 1px solid #4BA9C4;
+                    border-radius: 12px;
+
+                    font-size: 23px;
+                    font-weight: bold;
+                }
+
+                QPushButton:hover {
+                    background-color: #DDF6FB;
+
+                    color: #005E79;
+
+                    border: 1px solid #00A8D6;
+                }
+
+                QPushButton:pressed {
+                    background-color: #C8EDF5;
+
+                    color: #004B60;
+
+                    border: 1px solid #009CC5;
+                }
+                """
+            )
+
+        else:
+
+            self.setStyleSheet(
+                """
+                QLineEdit {
+                    background-color: #030A12;
+                    color: #DDEFFF;
+
+                    border: 1px solid #126486;
+                    border-radius: 12px;
+
+                    padding-left: 18px;
+                    padding-right: 18px;
+
+                    font-family:
+                        "Orbitron",
+                        "Eurostile",
+                        "Arial";
+
+                    font-size: 13px;
+                    letter-spacing: 1px;
+                }
+
+                QLineEdit:hover {
+                    border: 1px solid #1788B5;
+                }
+
+                QLineEdit:focus {
+                    border: 1px solid #00D9FF;
+                }
+
+                QPushButton {
+                    background-color: #030A12;
+
+                    color: #00D9FF;
+
+                    border: 1px solid #126486;
+                    border-radius: 12px;
+
+                    font-size: 23px;
+                    font-weight: bold;
+                }
+
+                QPushButton:hover {
+                    background-color: #061522;
+
+                    color: #6FEAFF;
+
+                    border: 1px solid #00D9FF;
+                }
+
+                QPushButton:pressed {
+                    background-color: #0A2638;
+
+                    color: #FFFFFF;
+
+                    border: 1px solid #00D9FF;
+                }
+                """
+            )
+
+    # ==================================================
+    # SEND
+    # ==================================================
+
+    def send_message(
+        self
+    ):
+
+        message = (
+            self.input
+            .text()
+            .strip()
+        )
+
         if not message:
             return
 
@@ -161,13 +250,10 @@ class ChatInput(QWidget):
             repr(message)
         )
 
-        # Send through signal
         self.message_sent.emit(
             message
         )
 
-        # Clear input
         self.input.clear()
 
-        # Keep keyboard focus
         self.input.setFocus()
