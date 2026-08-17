@@ -272,6 +272,12 @@ class OrbWidget(QWidget):
     def set_state(self, state):
 
         self.state = state
+        
+        print(
+            "JARVIS ORB STATE:",
+            self.state,
+        )
+
         self.update()
 
     # ======================================================
@@ -352,6 +358,47 @@ class OrbWidget(QWidget):
         housing_dark = colors["housing_dark"]
         white = colors["white"]
         core_color = colors["core"]
+
+        # ==================================================
+        # ERROR STATE COLOR
+        # ==================================================
+
+        if self.state == OrbState.ERROR:
+
+            primary = QColor(
+                255,
+                55,
+                75,
+                235,
+            )
+
+            secondary = QColor(
+                220,
+                30,
+                55,
+                170,
+            )
+
+            bright = QColor(
+                255,
+                85,
+                100,
+                245,
+            )
+
+            glow_color = QColor(
+                255,
+                35,
+                55,
+                255,
+            )
+
+            core_color = QColor(
+                255,
+                45,
+                65,
+                255,
+            )
 
         # ==================================================
         # CENTER
@@ -1137,6 +1184,13 @@ class OrbWidget(QWidget):
         central_glow.setColorAt(
             0.30,
             QColor(
+                255,
+                80,
+                95,
+                255,
+            )
+            if self.state == OrbState.ERROR
+            else QColor(
                 0,
                 245,
                 255,
@@ -1147,6 +1201,13 @@ class OrbWidget(QWidget):
         central_glow.setColorAt(
             0.65,
             QColor(
+                220,
+                35,
+                60,
+                150,
+            )
+            if self.state == OrbState.ERROR
+            else QColor(
                 0,
                 180,
                 230,
@@ -1157,6 +1218,13 @@ class OrbWidget(QWidget):
         central_glow.setColorAt(
             1.0,
             QColor(
+                255,
+                45,
+                65,
+                0,
+            )
+            if self.state == OrbState.ERROR
+            else QColor(
                 0,
                 217,
                 255,
