@@ -32,7 +32,13 @@ def speak(text: str) -> bool:
     The voice layer is intentionally isolated from the
     JARVIS brain.
 
-    A voice backend failure must never crash the brain.
+    Voice is optional.
+
+    If the selected voice backend is unavailable or fails,
+    the function returns False instead of crashing JARVIS.
+
+    This allows JARVIS to continue operating and return
+    the response through the normal typed/bridge interface.
     """
 
     if not text:
@@ -42,11 +48,11 @@ def speak(text: str) -> bool:
     # DISABLED
     # ------------------------------------------------------
 
-    if VOICE_MODE in {
+    if VOICE_MODE in (
         "disabled",
         "none",
         "off",
-    }:
+    ):
 
         print("JARVIS Voice: voice output disabled.")
 

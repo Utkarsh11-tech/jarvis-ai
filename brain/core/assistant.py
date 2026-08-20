@@ -20,7 +20,7 @@ from brain.core.executor import (
 from bridge.bridge import JarvisBridge
 
 from brain.voices.voice_manager import speak
-from brain.voices.xtts_speaker import initialize_xtts
+
 
 from brain.core.state import (
     JarvisState,
@@ -944,16 +944,21 @@ class Assistant(QObject):
 
     def initialize(self):
         """
-        Initializes all required modules.
+        Initializes all required JARVIS modules.
+
+        Voice backends are optional and are not required for
+        JARVIS startup.
+
+        XTTS is started lazily when voice output is requested.
         """
 
-        print("Initializing all required modules.....")
+    print(
+        "Initializing all required modules....."
+    )
 
-        print("JARVIS: Loading XTTS voice engine...")
-
-        initialize_xtts()
-
-        print("JARVIS: XTTS voice engine ready.")
+    print(
+        "JARVIS: Core systems ready."
+    )
 
     # ==================================================
     # PROCESS COMMAND
