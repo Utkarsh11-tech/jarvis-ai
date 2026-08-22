@@ -1,0 +1,73 @@
+# ============================================================
+# LINE ENDINGS
+# ============================================================
+#
+# Without this file, Git had no opinion about line endings and
+# core.autocrlf was unset. The working tree drifted to CRLF while
+# the index still held LF, so every tracked file showed as fully
+# rewritten: 20,901 insertions and 20,901 deletions with no real
+# change. That makes diffs unreviewable and guarantees a conflict
+# in every file the next time two branches merge.
+#
+# Storing LF in the repository AND checking out LF keeps the result
+# identical for both of us no matter how our local Git is
+# configured. Python, PySide6 and Qt all read LF happily on Windows.
+# ============================================================
+
+# Default: treat text files as text, store and check out as LF.
+* text=auto eol=lf
+
+# ------------------------------------------------------------
+# Explicit text formats
+# ------------------------------------------------------------
+*.py      text eol=lf
+*.pyi     text eol=lf
+*.qss     text eol=lf
+*.md      text eol=lf
+*.txt     text eol=lf
+*.json    text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.ini     text eol=lf
+*.cfg     text eol=lf
+*.toml    text eol=lf
+*.env     text eol=lf
+
+# Windows-native scripts must keep CRLF or they can misbehave.
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+
+# ------------------------------------------------------------
+# Binary formats -- never touch these
+# ------------------------------------------------------------
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.icns    binary
+*.svg     text eol=lf
+
+*.wav     binary
+*.mp3     binary
+*.ogg     binary
+*.flac    binary
+
+*.ttf     binary
+*.otf     binary
+*.woff    binary
+*.woff2   binary
+
+# Model weights
+*.pt      binary
+*.pth     binary
+*.ckpt    binary
+*.bin     binary
+*.onnx    binary
+*.tflite  binary
+
+*.zip     binary
+*.gz      binary
+*.7z      binary
+*.pyc     binary
